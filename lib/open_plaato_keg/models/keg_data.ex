@@ -1,30 +1,31 @@
 defmodule OpenPlaatoKeg.Models.KegData do
-  defstruct id: nil,
-            weight_raw: nil,
-            weight_raw_unit: nil,
-            temperature_raw: nil,
-            temperature_raw_unit: nil
+  require Logger
+
+  def all do
+    Enum.map(devices(), &get/1)
+  end
 
   def get(id) do
-    case :dets.lookup(:keg_data, id) do
-      [{_, model}] -> model
-      [] -> nil
-    end
-  end
+    query = {{id, :"$1"}, :"$2"}
 
-  def keys do
     :keg_data
-    |> tab2list()
-    |> Enum.filter(fn {key, _} -> is_binary(key) end)
-    |> Enum.map(&elem(&1, 0))
+    |> :dets.match(query)
+    |> Enum.map(fn [key, value] -> {key, value} end)
+    |> Enum.reject(fn {key, _value} -> key == :calibration end)
+    |> Map.new()
   end
 
-  def insert(%__MODULE__{} = model) do
-    :dets.insert(:keg_data, {model.id, model})
+  def devices do
+    query = {{:_, :id}, :"$1"}
+
+    :keg_data
+    |> :dets.match(query)
+    |> List.flatten()
   end
 
-  # :dets doesn't support tab2list
-  defp tab2list(table) do
-    :dets.foldl(fn entry, acc -> [entry | acc] end, [], table)
+  def publish(id, data) do
+    Enum.each(data, fn {key, value} ->
+      :dets.insert(:keg_data, {{id, key}, value})
+    end)
   end
 end

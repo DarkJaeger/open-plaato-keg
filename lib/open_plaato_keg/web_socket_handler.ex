@@ -1,4 +1,6 @@
 defmodule OpenPlaatoKeg.WebSocketHandler do
+  alias OpenPlaatoKeg.Models.KegData
+
   def init(state) do
     Registry.register(OpenPlaatoKeg.WebSocketConnectionRegistry, "websocket_clients", self())
     {:ok, state}
@@ -13,15 +15,15 @@ defmodule OpenPlaatoKeg.WebSocketHandler do
     :ok
   end
 
-  def publish(message) do
-    json_message = Poison.encode!(message)
+  def publish(id, _data) do
+    keg_all_data = KegData.get(id)
 
     Registry.dispatch(
       OpenPlaatoKeg.WebSocketConnectionRegistry,
       "websocket_clients",
       fn entries ->
         for {pid, _} <- entries do
-          send(pid, {:broadcast, json_message})
+          send(pid, {:broadcast, Poison.encode!(keg_all_data)})
         end
       end
     )

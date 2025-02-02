@@ -1,8 +1,6 @@
 defmodule OpenPlaatoKeg.HttpRouter do
   use Plug.Router
-  alias OpenPlaatoKeg.KegDataProcessor
   alias OpenPlaatoKeg.Models.KegData
-  alias OpenPlaatoKeg.Models.KegDataOutput
 
   plug(Plug.Static,
     at: "/",
@@ -19,7 +17,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
   plug(:dispatch)
 
   get "api/kegs/devices" do
-    data = KegData.keys()
+    data = KegData.devices()
 
     conn
     |> put_resp_content_type("application/json")
@@ -27,7 +25,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
   end
 
   get "api/kegs" do
-    data = KegDataOutput.get()
+    data = KegData.all()
 
     conn
     |> put_resp_content_type("application/json")
@@ -35,8 +33,8 @@ defmodule OpenPlaatoKeg.HttpRouter do
   end
 
   get "api/kegs/:id" do
-    case KegDataOutput.get(conn.params["id"]) do
-      %KegDataOutput{} = data ->
+    case KegData.get(conn.params["id"]) do
+      %{} = data when map_size(data) > 0 ->
         conn
         |> put_resp_content_type("application/json")
         |> send_resp(200, Poison.encode!(data))
@@ -45,19 +43,6 @@ defmodule OpenPlaatoKeg.HttpRouter do
         conn
         |> put_resp_content_type("application/json")
         |> send_resp(404, Poison.encode!(%{error: "not_found"}))
-    end
-  end
-
-  post "api/kegs/calibrate" do
-    case KegDataProcessor.update_calibration_data(conn.body_params) do
-      {:ok, _} ->
-        conn
-        |> send_resp(201, "")
-
-      {:error, reason} ->
-        conn
-        |> put_resp_content_type("application/json")
-        |> send_resp(400, Poison.encode!(%{error: reason}))
     end
   end
 

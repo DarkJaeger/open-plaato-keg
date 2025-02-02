@@ -15,7 +15,9 @@ config :open_plaato_keg, :mqtt,
   username: get_env("MQTT_USERNAME", :string, "client"),
   password: get_env("MQTT_PASSWORD", :string, "client"),
   client: get_env("MQTT_CLIENT_ID", :string, "open_plaato_keg_local"),
-  topic: get_env("MQTT_TOPIC", :string, "plaato/keg")
+  topic: get_env("MQTT_TOPIC", :string, "plaato/keg"),
+  json_output: get_env!("MQTT_JSON_OUTPUT", :boolean, "true"),
+  property_output: get_env!("MQTT_PROPERTY_OUTPUT", :boolean, "false")
 
 config :open_plaato_keg, :barhelper,
   enabled: get_env!("BARHELPER_ENABLED", :boolean, "false"),
