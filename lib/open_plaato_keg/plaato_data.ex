@@ -56,7 +56,10 @@ defmodule OpenPlaatoKeg.PlaatoData do
     case Map.get(@plaato_data, {type, kind, id}) do
       nil ->
         Logger.debug("Unknown data type", data: inspect(message))
-        nil
+
+        if Application.get_env(:open_plaato_keg, :db)[:include_unknown_data],
+          do: {"#{type}_#{kind}_#{id}", data},
+          else: nil
 
       name ->
         {name, data}
