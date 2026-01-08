@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - next
 
 permissions:
   contents: write
@@ -44,6 +45,15 @@ jobs:
       - uses: paulhatch/semantic-version@v5.3.0
         id: version
 
+      - name: Determine Docker tag
+        id: docker_tag
+        run: |
+          if [ "${{ github.ref_name }}" = "master" ]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
       - uses: softprops/action-gh-release@v2
         id: create_release
         with:
@@ -68,5 +78,5 @@ jobs:
           docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 \
             -t ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version  }} \
-            -t ghcr.io/${{ github.repository }}:latest \
+            -t ghcr.io/${{ github.repository }}:${{ steps.docker_tag.outputs.tag }} \
             --push .
