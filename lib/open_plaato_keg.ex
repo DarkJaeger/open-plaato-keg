@@ -10,7 +10,6 @@ defmodule OpenPlaatoKeg do
   def bootstrap do
     db_file_path =
       Application.get_env(:open_plaato_keg, :db)[:file_path]
-      |> String.replace("priv/", to_string(:code.priv_dir(:open_plaato_keg)))
 
     # create folder if doesn't exist
     db_folder = Path.dirname(db_file_path)
