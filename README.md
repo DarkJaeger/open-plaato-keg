@@ -2,6 +2,64 @@
 
 Take control of your Plaato Keg! This reverse-engineered solution bypasses the Plaato cloud, keeping your keg data local and accessible even after the cloud service is discontinued.
 
+## 🆕 Next Branch - New Features and Changes
+
+The `next` branch contains upcoming features that are still in development. Install using the `next` Docker tag:
+
+```bash
+docker run --rm -it -p 1234:1234 -p 8085:8085 ghcr.io/sklopivo/open-plaato-keg:next
+```
+
+### New Features
+
+- **Keg Setup Page (`/setup.html`)** - Full-featured web UI to configure and control your keg:
+  - **Units & Mode**: Switch between Metric/US units, Weight/Volume display mode
+  - **Scale Sensitivity**: Adjust pour detection sensitivity (4 levels)
+  - **Calibration**: Tare scale, set empty keg weight, calibrate with known weight, temperature offset
+  - **Beer Information**: Set beer style, keg date, max keg volume (stored locally)
+  - **System Status**: View device info, WiFi signal, firmware version, chip temperature, leak detection
+
+- **Keg Command API** - New REST endpoints to send commands to connected kegs:
+  - `POST /api/kegs/:id/tare` - Tare the scale
+  - `POST /api/kegs/:id/empty-keg` - Set empty keg weight
+  - `POST /api/kegs/:id/max-keg-volume` - Set max volume
+  - `POST /api/kegs/:id/temperature-offset` - Adjust temperature reading
+  - `POST /api/kegs/:id/calibrate-known-weight` - Calibrate with known weight
+  - `POST /api/kegs/:id/beer-style` - Set beer style name
+  - `POST /api/kegs/:id/date` - Set keg date
+  - `POST /api/kegs/:id/unit` - Set unit system (metric/us)
+  - `POST /api/kegs/:id/measure-unit` - Set measure mode (weight/volume)
+  - `POST /api/kegs/:id/keg-mode` - Set keg mode (beer/co2) *experimental*
+  - `POST /api/kegs/:id/sensitivity` - Set scale sensitivity
+  - `GET /api/kegs/connected` - List currently connected kegs
+
+- **Improved Home Page (`/index.html`)**:
+  - Real-time updates via WebSocket
+  - Shows beer style and keg date as card title
+  - Temperature badge, pouring indicator, last pour, remaining percentage
+  - Modern dark theme with amber accents
+
+- **Enhanced Data Model** - Decodes all known Plaato Keg pins:
+  - Amount left, percent remaining, last pour
+  - Temperature (keg and chip)
+  - WiFi signal strength, firmware version
+  - Leak detection, min/max temperature alerts
+
+### Changes from Master
+
+- Removed old `/config.html` page (replaced by `/setup.html`)
+- Removed client-side calibration models (now handled via keg commands)
+- Simplified data flow - raw keg data stored directly
+- Added `KegCommander` module for bi-directional keg communication
+- Added `KegSocketRegistry` to track connected keg sockets
+- Prerelease versioning for `next` branch (e.g., `0.0.9-next.1`)
+
+### Experimental Features (⚠️ Use with Caution)
+
+- **CO₂ Mode** - Switch to CO₂ monitoring mode (pins not fully decoded)
+- **Scale Sensitivity** - No read feedback from keg for current setting
+- **Beer Style/Date** - Stored in local database (keg doesn't echo these values back)
+
 ## Why this exists?
 
 Plaato has decided to stop manufacturing its homebrewing equipment (Airlock, Keg, and Valve). Additionally, the company will shut down the cloud backend that provides data storage and enables the Plaato app to function ([announcement](https://plaato.io/plaato-for-homebrewers/?srsltid=AfmBOop1NiIPtQioYXJ0XWwf53s8FH0wi4M0VTfMo7vrXYixXQ1ITaOk)). This means the app will **cease to work after November 2025**, effectively ending the usability of the devices as they are currently designed.
@@ -139,15 +197,14 @@ Merely a showcase how to interact with WebSocket and REST API.
 
 ### `/index.html`
 
-* Displays your keg values in real time
+* Displays your keg values in real time with WebSocket updates
+* Shows beer style, keg date, temperature, pouring status, and remaining volume
 
-<img src=".readme/web-index.png" alt="Index" width="400"/>
+### `/setup.html`
 
-### `/config.html`
-
-* Configure your kegs
-
-<img src=".readme/web-config.png" alt="Config" width="400"/>
+* Configure and control your kegs
+* Set units, calibration, beer information, and view system status
+* Send commands directly to connected kegs
 
 ### HTTP REST API
 
