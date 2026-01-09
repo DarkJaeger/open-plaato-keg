@@ -13,6 +13,7 @@ defmodule OpenPlaatoKeg.Models.KegData do
     |> Enum.map(fn [key, value] -> {key, value} end)
     |> Enum.reject(fn {key, _value} -> key == :calibration end)
     |> Map.new()
+    |> Map.put(:id, id)
   end
 
   def devices do

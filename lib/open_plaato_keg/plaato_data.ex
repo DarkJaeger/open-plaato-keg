@@ -34,8 +34,9 @@ defmodule OpenPlaatoKeg.PlaatoData do
     {:hardware, "vw", "87"} => :max_temperature,
     {:hardware, "vw", "88"} => :keg_mode_c02_beer,
     {:hardware, "vw", "89"} => :sensitivity,
+    {:hardware, "vw", "92"} => :chip_temperature_string,
     {:hardware, "vw", "93"} => :firmware_version,
-    {:hardware, "vw", "94"} => :chip_temperature_string
+    {:property, "51", "max"} => :max_keg_volume
   }
 
   def decode(commands) when is_list(commands) do
@@ -57,8 +58,8 @@ defmodule OpenPlaatoKeg.PlaatoData do
       nil ->
         Logger.debug("Unknown data type", data: inspect(message))
 
-        if Application.get_env(:open_plaato_keg, :db)[:include_unknown_data],
-          do: {"#{type}_#{kind}_#{id}", data},
+        if Application.get_env(:open_plaato_keg, :include_unknown_data),
+          do: {"_#{type}_#{kind}_#{id}", data},
           else: nil
 
       name ->
@@ -67,7 +68,7 @@ defmodule OpenPlaatoKeg.PlaatoData do
   end
 
   def decode(message) do
-    Logger.debug("Unknown data type", data: inspect(message))
+    Logger.debug("Unknown data kind", data: inspect(message))
     nil
   end
 end
