@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Keg Setup - Open Plaato</title>
+    <style>
+      @import url("style.css");
+    </style>
+  </head>
+  <body>
+    <div id="header_container">
+      <nav class="navbar" role="navigation" aria-label="main navigation">
+        <div class="navbar-brand">
+          <a
+            role="button"
+            class="navbar-burger burger"
+            aria-label="menu"
+            aria-expanded="false"
+            data-target="navbarMenu"
+          >
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+          </a>
+        </div>
+
+        <div id="navbarMenu" class="navbar-menu">
+          <div class="navbar-start">
+            <a class="navbar-item" href="/index.html">Home</a>
+            <a class="navbar-item" href="/setup.html">Setup</a>
+          </div>
+        </div>
+      </nav>
+    </div>
+
+    <div id="page_container" class="container pageEntry">
+      <section class="section">
+        <div class="container">
+          <h1 class="title is-2">Keg Setup</h1>
+          <p class="subtitle">Configure and calibrate your keg scale</p>
+
+          <!-- Keg Selector -->
+          <div class="field">
+            <label class="label" for="kegId">Select Keg</label>
+            <div class="control">
+              <div class="select is-fullwidth">
+                <select id="kegId" name="kegId">
+                  <option value="">Select a connected keg...</option>
+                </select>
+              </div>
+            </div>
+            <p class="help" id="connectionStatus">Loading connected kegs...</p>
+          </div>
+
+          <!-- Units Section -->
+          <div class="box section-box">
+            <h2 class="title is-4">Units & Mode</h2>
+
+            <div class="columns">
+              <div class="column">
+                <div class="field">
+                  <label class="label">Unit System</label>
+                  <p class="help">Metric or US units</p>
+                  <div class="control">
+                    <div class="buttons has-addons">
+                      <button class="button unit-btn" id="unitMetric" data-value="metric" onclick="setUnit('metric')">
+                        <span class="icon">🌍</span>
+                        <span>Metric</span>
+                      </button>
+                      <button class="button unit-btn" id="unitUS" data-value="us" onclick="setUnit('us')">
+                        <span class="icon">🇺🇸</span>
+                        <span>US</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="column">
+                <div class="field">
+                  <label class="label">Measure Mode</label>
+                  <p class="help">Display by weight or volume</p>
+                  <div class="control">
+                    <div class="buttons has-addons">
+                      <button class="button measure-btn" id="measureWeight" data-value="weight" onclick="setMeasureUnit('weight')">
+                        <span class="icon">⚖️</span>
+                        <span>Weight</span>
+                      </button>
+                      <button class="button measure-btn" id="measureVolume" data-value="volume" onclick="setMeasureUnit('volume')">
+                        <span class="icon">🧪</span>
+                        <span>Volume</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Scale Sensitivity <span style="color: #ff3860;">*</span></label>
+              <p class="help">Higher = detects smaller pours</p>
+              <div class="control">
+                <div class="sensitivity-buttons">
+                  <button class="button sensitivity-btn" id="sens1" data-value="1" onclick="setSensitivity(1)" title="Very Low">▂</button>
+                  <button class="button sensitivity-btn" id="sens2" data-value="2" onclick="setSensitivity(2)" title="Low">▃</button>
+                  <button class="button sensitivity-btn" id="sens3" data-value="3" onclick="setSensitivity(3)" title="Medium">▅</button>
+                  <button class="button sensitivity-btn" id="sens4" data-value="4" onclick="setSensitivity(4)" title="High">█</button>
+                </div>
+              </div>
+              <p class="help has-text-warning-dark" style="margin-top: 0.5rem;">
+                <span style="color: #ff3860;">*</span> Sensitivity mode is experimental since the pin feedback is not read. Use at your own discretion.
+              </p>
+            </div>
+          </div>
+
+          <!-- Calibration Section -->
+          <div class="box section-box">
+            <h2 class="title is-4">Calibration</h2>
+
+            <div class="columns">
+              <div class="column">
+                <div class="field">
+                  <label class="label">Tare Scale</label>
+                  <p class="help">Zero the scale with an empty keg on it</p>
+                  <div class="control">
+                    <button class="button is-warning" id="tareBtn" onclick="sendTare()">
+                      <span class="icon">⚖️</span>
+                      <span>Tare</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="column">
+                <div class="field">
+                  <label class="label">Set Empty Keg Weight</label>
+                  <p class="help">Store the current weight as empty keg reference</p>
+                  <div class="control">
+                    <button class="button is-info" id="emptyKegBtn" onclick="sendEmptyKeg()">
+                      <span class="icon">🍺</span>
+                      <span>Set Empty</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Calibrate with Known Weight</label>
+              <p class="help">Place a known weight on the scale for calibration</p>
+              <div class="control">
+                <div class="field has-addons">
+                  <div class="control is-expanded">
+                    <input class="input" type="number" id="knownWeight" placeholder="e.g., 5.0" step="0.1" />
+                  </div>
+                  <div class="control">
+                    <span class="button is-static">kg</span>
+                  </div>
+                  <div class="control">
+                    <button class="button is-primary" onclick="sendKnownWeight()">Calibrate</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Temperature Offset</label>
+              <p class="help">Adjust temperature reading offset</p>
+              <div class="control">
+                <div class="field has-addons">
+                  <div class="control is-expanded">
+                    <input class="input" type="number" id="tempOffset" placeholder="e.g., -2.5" step="0.1" />
+                  </div>
+                  <div class="control">
+                    <span class="button is-static">°</span>
+                  </div>
+                  <div class="control">
+                    <button class="button is-primary" onclick="sendTempOffset()">Set</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Beer Info Section -->
+          <div class="box section-box">
+            <h2 class="title is-4">Beer Information</h2>
+
+            <div class="columns">
+              <div class="column">
+                <div class="field">
+                  <label class="label">Beer Style <span style="color: #ff3860;">*</span></label>
+                  <div class="control">
+                    <div class="field has-addons">
+                      <div class="control is-expanded">
+                        <input class="input" type="text" id="beerStyle" placeholder="e.g., IPA, Lager, Stout" />
+                      </div>
+                      <div class="control">
+                        <button class="button is-primary" onclick="sendBeerStyle()">Set</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="column">
+                <div class="field">
+                  <label class="label">Keg Date <span style="color: #ff3860;">*</span></label>
+                  <div class="control">
+                    <div class="field has-addons">
+                      <div class="control is-expanded">
+                        <input class="input" type="text" id="kegDate" placeholder="e.g., 12.01.2025" />
+                      </div>
+                      <div class="control">
+                        <button class="button is-primary" onclick="sendKegDate()">Set</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p class="help has-text-warning-dark">
+              <span style="color: #ff3860;">*</span> Beer information is not stored in the keg since there is no feedback pin to read. It is stored in the Open Plaato Keg database.
+            </p>
+
+            <div class="field">
+              <label class="label">Max Keg Volume</label>
+              <div class="control">
+                <div class="field has-addons">
+                  <div class="control is-expanded">
+                    <input class="input" type="number" id="maxVolume" placeholder="e.g., 19.66" step="0.01" />
+                  </div>
+                  <div class="control">
+                    <span class="button is-static">L</span>
+                  </div>
+                  <div class="control">
+                    <button class="button is-primary" onclick="sendMaxVolume()">Set</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Experimental Section -->
+          <div class="box section-box">
+            <h2 class="title is-4">Experimental</h2>
+
+            <div class="field">
+              <label class="label">Keg Mode</label>
+              <p class="help">Beer or CO₂ monitoring</p>
+              <div class="control">
+                <div class="buttons has-addons">
+                  <button class="button kegmode-btn" id="kegModeBeer" data-value="beer" onclick="setKegMode('beer')">
+                    <span class="icon">🍺</span>
+                    <span>Beer</span>
+                  </button>
+                  <button class="button kegmode-btn" id="kegModeCO2" data-value="co2" onclick="setKegMode('co2')">
+                    <span class="icon">💨</span>
+                    <span>CO₂</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <p class="help has-text-warning-dark" style="margin-top: 1rem;">
+              ⚠️ CO₂ mode is experimental and doesn't properly read the pins dedicated to CO₂. Use at your own discretion. Clicking this button won't visibly change the mode since there is no pin to read the current mode.
+            </p>
+          </div>
+
+          <!-- Current Status Display -->
+          <div class="box section-box" id="currentSettingsBox">
+            <h2 class="title is-4">Current Status</h2>
+            <div id="currentSettings" class="content">
+              <p class="has-text-grey">Select a keg to view current settings</p>
+            </div>
+          </div>
+
+        </div>
+      </section>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="notification toast is-hidden"></div>
+
+    <script>
+      // Navbar burger menu
+      const navbarBurgers = Array.prototype.slice.call(
+        document.querySelectorAll(".navbar-burger"),
+        0
+      );
+
+      if (navbarBurgers.length > 0) {
+        navbarBurgers.forEach((el) => {
+          el.addEventListener("click", () => {
+            const target = el.dataset.target;
+            const $target = document.getElementById(target);
+            el.classList.toggle("is-active");
+            $target.classList.toggle("is-active");
+          });
+        });
+      }
+
+      const kegIdSelect = document.getElementById("kegId");
+      const connectionStatus = document.getElementById("connectionStatus");
+      let currentKegData = {};
+
+      // Load connected kegs
+      function loadConnectedKegs() {
+        const currentValue = kegIdSelect.value; // Preserve current selection
+
+        fetch("/api/kegs/connected")
+          .then((response) => response.json())
+          .then((kegs) => {
+            kegIdSelect.innerHTML = '<option value="">Select a connected keg...</option>';
+
+            if (kegs.length === 0) {
+              connectionStatus.textContent = "No kegs connected";
+              connectionStatus.className = "help is-warning";
+            } else {
+              kegs.forEach((keg, index) => {
+                const option = document.createElement("option");
+                option.value = keg;
+                option.text = keg;
+                // Restore selection or auto-select first keg if none selected
+                if (keg === currentValue || (!currentValue && index === 0)) {
+                  option.selected = true;
+                }
+                kegIdSelect.appendChild(option);
+              });
+              connectionStatus.textContent = `${kegs.length} keg(s) connected`;
+              connectionStatus.className = "help is-success";
+
+              // Load data for auto-selected keg on first load
+              if (!currentValue && kegs.length > 0) {
+                loadKegData(kegs[0]);
+              }
+            }
+          })
+          .catch(() => {
+            connectionStatus.textContent = "Error loading kegs";
+            connectionStatus.className = "help is-danger";
+          });
+      }
+
+      // Load keg data from REST API
+      function loadKegData(kegId) {
+        if (!kegId) return;
+
+        fetch(`/api/kegs/${kegId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            currentKegData = data;
+            populateFormFields(data);
+            updateSettingsDisplay(data);
+            highlightCurrentSettings(data);
+          })
+          .catch((err) => {
+            console.error("Error loading keg data:", err);
+          });
+      }
+
+      // Populate form fields with keg data
+      // Helper to update field only if it's not currently focused (user is typing)
+      function updateFieldIfNotFocused(fieldId, value) {
+        const field = document.getElementById(fieldId);
+        if (field && document.activeElement !== field) {
+          field.value = value;
+        }
+      }
+
+      function populateFormFields(data) {
+        // Temperature offset - only update if not focused
+        if (data.temperature_offset) {
+          updateFieldIfNotFocused("tempOffset", data.temperature_offset);
+        }
+
+        // Max keg volume - only update if not focused
+        if (data.max_keg_volume) {
+          updateFieldIfNotFocused("maxVolume", data.max_keg_volume);
+        }
+
+        // Beer style (stored locally as my_beer_style) - only update if not focused
+        if (data.my_beer_style) {
+          updateFieldIfNotFocused("beerStyle", data.my_beer_style.trim());
+        }
+
+        // Keg date (stored locally as my_keg_date) - only update if not focused
+        if (data.my_keg_date) {
+          updateFieldIfNotFocused("kegDate", data.my_keg_date.trim());
+        }
+
+        // Known weight - only update if not focused
+        if (data.known_weight) {
+          updateFieldIfNotFocused("knownWeight", data.known_weight);
+        }
+      }
+
+      function updateSettingsDisplay(data) {
+        const kegModeMap = { "1": "Beer", "2": "CO₂" };
+        const sensMap = { "1": "Very Low", "2": "Low", "3": "Medium", "4": "High" };
+        const unitMap = { "1": "Metric", "2": "US" };
+
+        // Unit system: 1 = Metric, 2 = US
+        const unitSystemDisplay = unitMap[data.unit] || "Not set";
+
+        // Measure mode based on beer_left_unit: lbs/kg = Weight, gal/litre = Volume
+        const beerLeftUnit = data.beer_left_unit;
+        const measureModeDisplay = (beerLeftUnit === "lbs" || beerLeftUnit === "kg") ? `Weight (${beerLeftUnit})`
+                                 : (beerLeftUnit === "gal" || beerLeftUnit === "litre") ? `Volume (${beerLeftUnit})`
+                                 : "Not set";
+
+        const html = `
+          <table class="table is-fullwidth is-hoverable">
+            <tbody>
+              <tr>
+                <td><strong>Unit System</strong></td>
+                <td>${unitSystemDisplay}</td>
+              </tr>
+              <tr>
+                <td><strong>Measure Mode</strong></td>
+                <td>${measureModeDisplay}</td>
+              </tr>
+              <tr>
+                <td><strong>Keg Mode</strong></td>
+                <td>${kegModeMap[data.keg_mode_c02_beer] || data.keg_mode_c02_beer || "Not set"}</td>
+              </tr>
+              <tr>
+                <td><strong>Sensitivity</strong></td>
+                <td>${sensMap[data.sensitivity] || data.sensitivity || "Not set"}</td>
+              </tr>
+              <tr>
+                <td><strong>Beer Style</strong></td>
+                <td>${data.my_beer_style?.trim() || "Not set"}</td>
+              </tr>
+              <tr>
+                <td><strong>Temperature</strong></td>
+                <td>${data.keg_temperature_string || data.keg_temperature || "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Chip Temperature</strong></td>
+                <td>${data.chip_temperature_string || "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Amount Left</strong></td>
+                <td>${data.amount_left || "N/A"} ${data.beer_left_unit || ""}</td>
+              </tr>
+            </tbody>
+          </table>
+          <h3 class="title is-6" style="margin-top: 1rem;">System</h3>
+          <table class="table is-fullwidth is-hoverable">
+            <tbody>
+              <tr>
+                <td><strong>WiFi Signal</strong></td>
+                <td>${data.wifi_signal_strength || "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Firmware Version</strong></td>
+                <td>${data.firmware_version || "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Leak Detection</strong></td>
+                <td>${data.leak_detection === "1" ? "⚠️ Leak detected" : data.leak_detection === "0" ? "✅ No leak" : data.leak_detection || "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Min Temperature</strong></td>
+                <td>${data.min_temperature || "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Max Temperature</strong></td>
+                <td>${data.max_temperature || "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Device</strong></td>
+                <td>${data.internal?.dev || "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Version</strong></td>
+                <td>${data.internal?.ver || "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Firmware</strong></td>
+                <td>${data.internal?.fw || "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Build</strong></td>
+                <td>${data.internal?.build || "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Template</strong></td>
+                <td>${data.internal?.tmpl || "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Heartbeat</strong></td>
+                <td>${data.internal?.["h-beat"] ? data.internal["h-beat"] + "s" : "N/A"}</td>
+              </tr>
+              <tr>
+                <td><strong>Buffer</strong></td>
+                <td>${data.internal?.["buff-in"] ? data.internal["buff-in"] + " bytes" : "N/A"}</td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+        document.getElementById("currentSettings").innerHTML = html;
+      }
+
+      function clearActiveButtons() {
+        document.querySelectorAll(".unit-btn, .measure-btn, .kegmode-btn, .sensitivity-btn")
+          .forEach(btn => btn.classList.remove("is-primary", "is-selected"));
+      }
+
+      function highlightCurrentSettings(data) {
+        clearActiveButtons();
+
+        // Unit system: 1 = Metric, 2 = US
+        if (data.unit === "1") {
+          document.getElementById("unitMetric")?.classList.add("is-primary", "is-selected");
+        }
+        if (data.unit === "2") {
+          document.getElementById("unitUS")?.classList.add("is-primary", "is-selected");
+        }
+
+        const beerLeftUnit = data.beer_left_unit;
+
+        // Measure mode based on beer_left_unit: lbs/kg = Weight, gal/litre = Volume
+        if (beerLeftUnit === "lbs" || beerLeftUnit === "kg") {
+          document.getElementById("measureWeight")?.classList.add("is-primary", "is-selected");
+        }
+        if (beerLeftUnit === "gal" || beerLeftUnit === "litre") {
+          document.getElementById("measureVolume")?.classList.add("is-primary", "is-selected");
+        }
+
+        // Keg mode
+        if (data.keg_mode_c02_beer === "1") document.getElementById("kegModeBeer")?.classList.add("is-primary", "is-selected");
+        if (data.keg_mode_c02_beer === "2") document.getElementById("kegModeCO2")?.classList.add("is-primary", "is-selected");
+
+        // Sensitivity
+        const sensId = `sens${data.sensitivity}`;
+        document.getElementById(sensId)?.classList.add("is-primary", "is-selected");
+      }
+
+      // Listen for keg selection changes
+      kegIdSelect.addEventListener("change", () => {
+        const kegId = kegIdSelect.value;
+        if (kegId) {
+          loadKegData(kegId);
+        } else {
+          // Clear form when no keg selected
+          currentKegData = {};
+          document.getElementById("tempOffset").value = "";
+          document.getElementById("maxVolume").value = "";
+          document.getElementById("beerStyle").value = "";
+          document.getElementById("kegDate").value = "";
+          document.getElementById("currentSettings").innerHTML =
+            '<p class="has-text-grey">Select a keg to view current settings</p>';
+          clearActiveButtons();
+        }
+      });
+
+      // WebSocket connection for real-time updates
+      const socket = new WebSocket(`ws://${window.location.host}/ws`);
+
+      socket.addEventListener("open", () => {
+        console.log("WebSocket connected for setup page");
+      });
+
+      socket.addEventListener("message", (event) => {
+        const data = JSON.parse(event.data);
+        // Only update if this is the currently selected keg
+        if (data.id === kegIdSelect.value) {
+          currentKegData = { ...currentKegData, ...data };
+          populateFormFields(currentKegData);
+          updateSettingsDisplay(currentKegData);
+          highlightCurrentSettings(currentKegData);
+        }
+      });
+
+      socket.addEventListener("error", (error) => {
+        console.error("WebSocket error:", error);
+      });
+
+      socket.addEventListener("close", () => {
+        console.log("WebSocket closed");
+      });
+
+      loadConnectedKegs();
+      setInterval(loadConnectedKegs, 10000);
+
+      function getSelectedKeg() {
+        const kegId = kegIdSelect.value;
+        if (!kegId) {
+          showToast("Please select a keg first", "warning");
+          return null;
+        }
+        return kegId;
+      }
+
+      function showToast(message, type = "info") {
+        const toast = document.getElementById("toast");
+        toast.textContent = message;
+        toast.className = `notification toast is-${type}`;
+        setTimeout(() => {
+          toast.classList.add("is-hidden");
+        }, 3000);
+      }
+
+      function sendCommand(endpoint, body = {}) {
+        const kegId = getSelectedKeg();
+        if (!kegId) return;
+
+        fetch(`/api/kegs/${kegId}/${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "ok") {
+              showToast(`Command sent: ${data.command}`, "success");
+            } else {
+              showToast(`Error: ${data.error}`, "danger");
+            }
+          })
+          .catch((err) => {
+            showToast(`Error: ${err.message}`, "danger");
+          });
+      }
+
+      // Calibration commands with auto-release after 1 second
+      function sendTare() {
+        sendCommandWithRelease("tare", "tare-release", "tareBtn");
+      }
+
+      function sendEmptyKeg() {
+        sendCommandWithRelease("empty-keg", "empty-keg-release", "emptyKegBtn");
+      }
+
+      // Helper function to send command, wait 1s, then send release
+      function sendCommandWithRelease(command, releaseCommand, buttonId) {
+        const kegId = getSelectedKeg();
+        if (!kegId) return;
+
+        const button = document.getElementById(buttonId);
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<span class="icon">⏳</span><span>Working...</span>';
+
+        fetch(`/api/kegs/${kegId}/${command}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "ok") {
+              showToast(`Command sent: ${data.command}`, "success");
+              // Wait 1 second then send release
+              setTimeout(() => {
+                fetch(`/api/kegs/${kegId}/${releaseCommand}`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({}),
+                })
+                  .then((response) => response.json())
+                  .then((releaseData) => {
+                    if (releaseData.status === "ok") {
+                      showToast(`${data.command} completed`, "success");
+                    }
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                  })
+                  .catch(() => {
+                    button.disabled = false;
+                    button.innerHTML = originalText;
+                  });
+              }, 1000);
+            } else {
+              showToast(`Error: ${data.error}`, "danger");
+              button.disabled = false;
+              button.innerHTML = originalText;
+            }
+          })
+          .catch((err) => {
+            showToast(`Error: ${err.message}`, "danger");
+            button.disabled = false;
+            button.innerHTML = originalText;
+          });
+      }
+
+      function sendKnownWeight() {
+        const value = document.getElementById("knownWeight").value;
+        if (!value) { showToast("Please enter a weight value", "warning"); return; }
+        sendCommand("calibrate-known-weight", { value });
+      }
+
+      function sendTempOffset() {
+        const value = document.getElementById("tempOffset").value;
+        if (!value) { showToast("Please enter a temperature offset", "warning"); return; }
+        sendCommand("temperature-offset", { value });
+      }
+
+      // Volume commands
+      function sendMaxVolume() {
+        const value = document.getElementById("maxVolume").value;
+        if (!value) { showToast("Please enter a volume", "warning"); return; }
+        sendCommand("max-keg-volume", { value });
+      }
+
+      // Beer info commands
+      function sendBeerStyle() {
+        const value = document.getElementById("beerStyle").value;
+        if (!value) { showToast("Please enter a beer style", "warning"); return; }
+        sendCommand("beer-style", { value });
+      }
+
+      function sendKegDate() {
+        const value = document.getElementById("kegDate").value;
+        if (!value) { showToast("Please enter a date", "warning"); return; }
+        sendCommand("date", { value });
+      }
+
+      // ABV commands
+      // Settings commands
+      function setUnit(value) {
+        sendCommand("unit", { value });
+      }
+
+      function setMeasureUnit(value) {
+        sendCommand("measure-unit", { value });
+      }
+
+      function setKegMode(value) {
+        sendCommand("keg-mode", { value });
+      }
+
+      function setSensitivity(level) {
+        sendCommand("sensitivity", { value: level.toString() });
+      }
+    </script>
+  </body>
+</html>

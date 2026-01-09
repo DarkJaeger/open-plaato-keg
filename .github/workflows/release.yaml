@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - next
 
 permissions:
   contents: write
@@ -43,30 +44,61 @@ jobs:
 
       - uses: paulhatch/semantic-version@v5.3.0
         id: version
+        with:
+          # Branch to use for stable releases
+          branch: master
+          # Prefix for tags
+          tag_prefix: "v"
+          # Version format: on master -> 0.0.9, on next -> 0.0.9-next.5
+          # ${increment} is the number of commits since the last tag on non-release branches
+          version_format: "${major}.${minor}.${patch}-prerelease${increment}"
+          bump_each_commit: false
+
+      # Determine final version based on branch
+      - name: Set version
+        id: final_version
+        run: |
+          if [ "${{ github.ref_name }}" = "master" ]; then
+            # On master, use clean version without prerelease suffix
+            echo "version=${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}" >> $GITHUB_OUTPUT
+          else
+            # On other branches (next, beta, etc.), use prerelease format
+            echo "version=${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}-${{ github.ref_name }}.${{ steps.version.outputs.increment }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine Docker tag
+        id: docker_tag
+        run: |
+          if [ "${{ github.ref_name }}" = "master" ]; then
+            echo "tag=latest" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
 
       - uses: softprops/action-gh-release@v2
         id: create_release
         with:
           generate_release_notes: "true"
-          name: v${{ steps.version.outputs.version }}
-          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.final_version.outputs.version }}
+          tag_name: v${{ steps.final_version.outputs.version }}
+          prerelease: ${{ github.ref_name != 'master' }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Write version to file
-        run: mkdir -p .release && echo "${{ steps.version.outputs.version }}" > .release/version
+        run: mkdir -p .release && echo "${{ steps.final_version.outputs.version }}" > .release/version
 
       - name: Commit and push version file
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .release/version
-          git commit -m "chore(release): update version to ${{ steps.version.outputs.version }} [ci skip]"
+          git commit -m "chore(release): update version to ${{ steps.final_version.outputs.version }} [ci skip]"
           git push
 
       - name: Build and push Docker images
         run: |
           docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version  }} \
-            -t ghcr.io/${{ github.repository }}:latest \
+            -t ghcr.io/${{ github.repository }}:${{ steps.final_version.outputs.version }} \
+            -t ghcr.io/${{ github.repository }}:${{ steps.docker_tag.outputs.tag }} \
             --push .

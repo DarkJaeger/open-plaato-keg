@@ -28,8 +28,8 @@
 
       <div id="navbarMenu" class="navbar-menu">
         <div class="navbar-start">
-          <a class="navbar-item" href="/index.html"> Home </a>
-          <a class="navbar-item" href="/config.html"> Config </a>
+          <a class="navbar-item" href="/index.html">Home</a>
+          <a class="navbar-item" href="/setup.html">Setup</a>
         </div>
       </div>
     </nav>
@@ -69,18 +69,42 @@
             const column = document.createElement('div');
             column.classList.add('column', 'is-one-third'); // Responsive columns
 
+            // Parse amount_left and keg_temperature as floats (they come as strings from the API)
+            const amountLeft = parseFloat(kegData.amount_left) || 0;
+            const maxVolume = parseFloat(kegData.max_keg_volume) || 0;
+            const temperature = parseFloat(kegData.keg_temperature);
+            const percentLeft = parseFloat(kegData.percent_of_beer_left) || 0;
+            const rawUnit = kegData.beer_left_unit || 'L';
+            const volumeUnit = rawUnit === 'litre' ? 'L' : rawUnit;
+            const tempUnit = kegData.temperature_unit || '°C';
+
+            const lastPour = parseFloat(kegData.last_pour) || 0;
+            const isPouring = kegData.is_pouring && kegData.is_pouring !== "0";
+
+            // Build card title from beer style and keg date (stored locally as my_beer_style, my_keg_date)
+            const beerStyle = kegData.my_beer_style?.trim();
+            const kegDate = kegData.my_keg_date?.trim();
+            let cardTitle = '';
+            if (beerStyle && kegDate) {
+                cardTitle = `${beerStyle} <span style="color: #888; font-size: 0.8em; margin-left: 0.5em;">${kegDate}</span>`;
+            } else if (beerStyle) {
+                cardTitle = beerStyle;
+            } else if (kegDate) {
+                cardTitle = `<span style="color: #888; font-size: 0.8em;">${kegDate}</span>`;
+            }
+
             const card = `
                 <div class="card" data-keg-id="${kegData.id}">
+                    <span class="temperature-badge">${!isNaN(temperature) ? temperature.toFixed(1) : '--'}${tempUnit}</span>
+                    <span class="pouring-indicator ${isPouring ? 'is-pouring' : ''}" title="${isPouring ? 'POURING' : ''}"></span>
+                    ${lastPour > 0 ? `<span class="last-pour-badge">LAST POUR: ${lastPour.toFixed(2)} ${volumeUnit}</span>` : ''}
+                    <span class="remaining-badge">REMAINING: ${(percentLeft * 100).toFixed(1)}%</span>
                     <div class="card-content">
                         <div class="media">
                             <div class="media-content">
-                                <p class="title is-5">${kegData.name}</p>
-                                <p class="subtitle is-1">${kegData.weight.toFixed(2)} ${kegData.weight_raw_unit || 'kg'}</p>
+                                ${cardTitle ? `<p class="title is-5">${cardTitle}</p>` : ''}
+                                <p class="subtitle is-1">${amountLeft.toFixed(2)} ${volumeUnit}</p>
                             </div>
-                        </div>
-                        <div class="content is-small">
-                            <p>Full Weight: ${kegData.full_weight.toFixed(2)} ${kegData.weight_raw_unit || 'kg'}</p>
-                            <p>Temperature: ${kegData.temperature?.toFixed(2) || 'N/A'} ${kegData.temperature_raw_unit || ''}</p>
                         </div>
                     </div>
                 </div>
@@ -93,9 +117,16 @@
         fetch('/api/kegs')
             .then(response => response.json())
             .then(kegs => {
-                kegs.forEach(keg => {
-                    kegContainer.appendChild(createKegCard(keg));
-                });
+                if (kegs.length === 0) {
+                    kegContainer.innerHTML = '<div class="column"><p class="has-text-grey">No kegs found. Connect a keg to see data here.</p></div>';
+                } else {
+                    kegs.forEach(keg => {
+                        kegContainer.appendChild(createKegCard(keg));
+                    });
+                }
+            })
+            .catch(err => {
+                kegContainer.innerHTML = '<div class="column"><p class="has-text-danger">Error loading kegs: ' + err.message + '</p></div>';
             });
 
         // WebSocket connection
@@ -111,7 +142,11 @@
             const kegId = updatedKeg.id;
             const existingCard = document.querySelector(`#kegContainer [data-keg-id="${kegId}"]`);
             if (existingCard) {
-                existingCard.innerHTML = createKegCard(updatedKeg).innerHTML;
+                const newCard = createKegCard(updatedKeg);
+                existingCard.innerHTML = newCard.querySelector('.card').innerHTML;
+            } else if (kegId) {
+                // New keg appeared, add it
+                kegContainer.appendChild(createKegCard(updatedKeg));
             }
         });
 

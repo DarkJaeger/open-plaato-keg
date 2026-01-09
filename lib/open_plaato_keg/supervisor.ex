@@ -12,6 +12,7 @@ defmodule OpenPlaatoKeg.Supervisor do
         mqtt_spec(),
         barhelper_spec(),
         ws_registry_spec(),
+        keg_socket_registry_spec(),
         tcp_listener_spec(),
         http_router_spec()
       ]
@@ -22,6 +23,10 @@ defmodule OpenPlaatoKeg.Supervisor do
 
   defp ws_registry_spec do
     {Registry, keys: :duplicate, name: OpenPlaatoKeg.WebSocketConnectionRegistry}
+  end
+
+  defp keg_socket_registry_spec do
+    {Registry, keys: :unique, name: OpenPlaatoKeg.KegSocketRegistry}
   end
 
   defp tcp_listener_spec do
