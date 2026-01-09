@@ -2,7 +2,7 @@ import Config
 import OpenPlaatoKeg.Config
 
 config :open_plaato_keg,
-  include_unknown_data: get_env!("INCLUDE_UNKNOWN_DATA", :boolean, "true")
+  include_unknown_data: get_env!("INCLUDE_UNKNOWN_DATA", :boolean, "false")
 
 config :open_plaato_keg, :db,
   file_path: get_env("DATABASE_FILE_PATH", :string, "priv/db/keg_data.bin")
@@ -20,7 +20,7 @@ config :open_plaato_keg, :mqtt,
   client: get_env("MQTT_CLIENT_ID", :string, "open_plaato_keg_local"),
   topic: get_env("MQTT_TOPIC", :string, "plaato/keg"),
   json_output: get_env!("MQTT_JSON_OUTPUT", :boolean, "true"),
-  property_output: get_env!("MQTT_PROPERTY_OUTPUT", :boolean, "false")
+  property_output: get_env!("MQTT_PROPERTY_OUTPUT", :boolean, "true")
 
 config :open_plaato_keg, :barhelper,
   enabled: get_env!("BARHELPER_ENABLED", :boolean, "false"),

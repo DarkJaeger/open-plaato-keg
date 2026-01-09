@@ -67,8 +67,6 @@ defmodule OpenPlaatoKeg.KegCommander do
     encode_hardware_write(pin, to_string(value))
   end
 
-
-
   # Debug commands
   def set_temperature_offset(keg_id, offset),
     do: send_command(keg_id, :temperature_offset, offset)
