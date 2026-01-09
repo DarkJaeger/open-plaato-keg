@@ -32,6 +32,9 @@ jobs:
       - name: Run Credo linter
         run: mix credo --strict
 
+      - name: Set up QEMU for multi-arch builds
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 

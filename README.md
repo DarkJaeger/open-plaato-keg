@@ -12,6 +12,8 @@ docker run --rm -it -p 1234:1234 -p 8085:8085 ghcr.io/sklopivo/open-plaato-keg:n
 
 ### New Features
 
+- **Multi-Architecture Docker Images** - Native support for `linux/amd64` and `linux/arm64` (Raspberry Pi 4/5, Apple Silicon, AWS Graviton)
+
 - **Keg Setup Page (`/setup.html`)** - Full-featured web UI to configure and control your keg:
   - **Units & Mode**: Switch between Metric/US units, Weight/Volume display mode
   - **Scale Sensitivity**: Adjust pour detection sensitivity (4 levels)
@@ -129,6 +131,14 @@ http://192.168.4.1/config?ssid=My+Wifi&pass=my_password&blynk=000000000000000000
 ### Docker Images
 
 Docker images are built on Github Container Registry (`ghcr.io`).
+
+**Supported architectures:** `linux/amd64`, `linux/arm64`
+
+This means images work on:
+- Standard x86_64 servers and PCs
+- Raspberry Pi 4/5 (64-bit OS)
+- Apple Silicon Macs (M1/M2/M3)
+- AWS Graviton instances
 
 Image:
 * `ghcr.io/sklopivo/open-plaato-keg:latest` or tagged by semantic version  - eg. `ghcr.io/sklopivo/open-plaato-keg:x.y.z`
