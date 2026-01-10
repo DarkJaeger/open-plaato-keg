@@ -98,7 +98,7 @@
                     <span class="temperature-badge">${!isNaN(temperature) ? temperature.toFixed(1) : '--'}${tempUnit}</span>
                     <span class="pouring-indicator ${isPouring ? 'is-pouring' : ''}" title="${isPouring ? 'POURING' : ''}"></span>
                     ${lastPour > 0 ? `<span class="last-pour-badge">LAST POUR: ${lastPour.toFixed(2)} ${volumeUnit}</span>` : ''}
-                    <span class="remaining-badge">REMAINING: ${(percentLeft * 100).toFixed(1)}%</span>
+                    <span class="remaining-badge">REMAINING: ${percentLeft.toFixed(1)}%</span>
                     <div class="card-content">
                         <div class="media">
                             <div class="media-content">
