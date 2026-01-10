@@ -45,7 +45,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: paulhatch/semantic-version@v5.3.0
+      - uses: paulhatch/semantic-version@v5.4.0
         id: version
         with:
           # Branch to use for stable releases
@@ -55,7 +55,8 @@ jobs:
           # Version format: on master -> 0.0.9, on next -> 0.0.9-next.5
           # ${increment} is the number of commits since the last tag on non-release branches
           version_format: "${major}.${minor}.${patch}-prerelease${increment}"
-          bump_each_commit: true
+          bump_each_commit: false
+          version_from_branch: true
 
       # Determine final version based on branch
       - name: Set version
