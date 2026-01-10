@@ -402,31 +402,12 @@ Showcase how to interact with WebSocket and REST API.
 ### `/api/kegs/devices`
 
 * **Method:** `GET`
-* **Description:**  Retrieves a list of the device IDs connected to the Plaato Keg system.
+* **Description:**  Retrieves a list of the device IDs connected/offline in the Plaato Keg system.
 * **Response:** An array of strings, where each string is a device ID.
    * **Example Response:**
       ```json
       ["00000000000000000000000000000001"]
       ```
-
-### `/api/kegs/calibrate`
-
-* **Method:** `POST`
-* **Description:** Calibrates a keg's settings.
-* **Request Body:** A JSON object with the following fields:
-    * `id`: The unique ID of the keg.
-    * `name`: The name of the keg.
-    * `full_weight`:  Weight of the keg when full.
-    * `weight_calibrate`: Calibration offset for the weight.
-    * `temperature_calibrate`: Calibration offset for the temperature.
-* **Example Request Body:**
-   ```json
-   {"id":"00000000000000000000000000000001","name":"My keg","full_weight":19,"weight_calibrate":0,"temperature_calibrate":-52}
-* **Response:**
-  * `201 Created` - when everything is ok
-  * `400 Bad Request` when parameters validation fails
-  * `500 Internal Server error` - when something is f***** up
-
 
 ### `/api/metrics`
 
@@ -435,16 +416,22 @@ Showcase how to interact with WebSocket and REST API.
 * **Response**: `plaato_keg_weight` and `plaato_keg_temperature` are exposed alongside with Elixir metrics.
 
 ```
-# TYPE plaato_keg_weight gauge
-# HELP plaato_keg_weight Weight from Plaato Keg
-plaato_keg_weight{id="33bcbe756b994a6768494d55d1543c74",type="current",unit=""} 1.27
-plaato_keg_weight{id="33bcbe756b994a6768494d55d1543c74",type="calibrate",unit=""} 0
-plaato_keg_weight{id="33bcbe756b994a6768494d55d1543c74",type="raw",unit=""} 1.27
-# TYPE plaato_keg_temperature gauge
-# HELP plaato_keg_temperature Temperature from Plaato Keg
-plaato_keg_temperature{id="33bcbe756b994a6768494d55d1543c74",type="calibrate",unit="°C"} 0
-plaato_keg_temperature{id="33bcbe756b994a6768494d55d1543c74",type="current",unit="°C"} 72.78
-plaato_keg_temperature{id="33bcbe756b994a6768494d55d1543c74",type="raw",unit="°C"} 72.78
+plaato_keg{id="00000000000000000000000000000001",type="keg_temperature"} 23.0
+plaato_keg{id="00000000000000000000000000000001",type="leak_detection"} 0.0
+plaato_keg{id="00000000000000000000000000000001",type="og"} 1.0e3
+plaato_keg{id="00000000000000000000000000000001",type="max_keg_volume"} 19.0
+plaato_keg{id="00000000000000000000000000000001",type="last_pour"} 0.0
+plaato_keg{id="00000000000000000000000000000001",type="amount_left"} -0.1
+plaato_keg{id="00000000000000000000000000000001",type="max_temperature"} 30.0
+plaato_keg{id="00000000000000000000000000000001",type="min_temperature"} 0.0
+plaato_keg{id="00000000000000000000000000000001",type="temperature_offset"} -7.5
+plaato_keg{id="00000000000000000000000000000001",type="empty_keg_weight"} 0.0
+plaato_keg{id="00000000000000000000000000000001",type="measure_unit"} 2.0
+plaato_keg{id="00000000000000000000000000000001",type="fg"} 1.0e3
+plaato_keg{id="00000000000000000000000000000001",type="percent_of_beer_left"} 0.0
+plaato_keg{id="00000000000000000000000000000001",type="wifi_signal_strength"} 88.0
+plaato_keg{id="00000000000000000000000000000001",type="unit"} 1.0
+plaato_keg{id="00000000000000000000000000000001",type="is_pouring"} 0.0
 ```
 
 ### `/api/alive`
