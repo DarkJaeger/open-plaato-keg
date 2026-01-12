@@ -173,6 +173,46 @@ defmodule OpenPlaatoKeg.HttpRouter do
     json_response(conn, 200, %{status: "ok", command: "date", value: value})
   end
 
+  post "api/kegs/:id/og" do
+    keg_id = conn.params["id"]
+    %{"value" => value} = conn.body_params
+
+    # Save to our local database only (no hardware pin for this)
+    KegData.publish(keg_id, [{:my_og, value}])
+
+    json_response(conn, 200, %{status: "ok", command: "og", value: value})
+  end
+
+  post "api/kegs/:id/fg" do
+    keg_id = conn.params["id"]
+    %{"value" => value} = conn.body_params
+
+    # Save to our local database only (no hardware pin for this)
+    KegData.publish(keg_id, [{:my_fg, value}])
+
+    json_response(conn, 200, %{status: "ok", command: "fg", value: value})
+  end
+
+  post "api/kegs/:id/abv" do
+    keg_id = conn.params["id"]
+    %{"og" => og_str, "fg" => fg_str} = conn.body_params
+
+    with {og, ""} <- Float.parse(og_str),
+         {fg, ""} <- Float.parse(fg_str) do
+      # Standard homebrewing ABV formula: (OG - FG) × 131.25
+      abv = (og - fg) * 131.25
+      abv_rounded = Float.round(abv, 2)
+
+      # Save to our local database only (no hardware pin for this)
+      KegData.publish(keg_id, [{:my_abv, "#{abv_rounded}"}])
+
+      json_response(conn, 200, %{abv: abv_rounded})
+    else
+      _ ->
+        json_response(conn, 400, %{error: "Invalid OG or FG format"})
+    end
+  end
+
   # ============================================
   # Settings Commands
   # ============================================

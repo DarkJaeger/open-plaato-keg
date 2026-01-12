@@ -81,9 +81,10 @@
             const lastPour = parseFloat(kegData.last_pour) || 0;
             const isPouring = kegData.is_pouring && kegData.is_pouring !== "0";
 
-            // Build card title from beer style and keg date (stored locally as my_beer_style, my_keg_date)
+            // Build card title from beer style, keg date, and ABV (stored locally as my_beer_style, my_keg_date, my_abv)
             const beerStyle = kegData.my_beer_style?.trim();
             const kegDate = kegData.my_keg_date?.trim();
+            const abv = kegData.my_abv?.trim();
             let cardTitle = '';
             if (beerStyle && kegDate) {
                 cardTitle = `${beerStyle} <span style="color: #888; font-size: 0.8em; margin-left: 0.5em;">${kegDate}</span>`;
@@ -91,6 +92,10 @@
                 cardTitle = beerStyle;
             } else if (kegDate) {
                 cardTitle = `<span style="color: #888; font-size: 0.8em;">${kegDate}</span>`;
+            }
+            // Add ABV if available
+            if (abv) {
+                cardTitle += ` <span style="color: #f59e0b; font-size: 0.8em; margin-left: 0.5em;">${abv}%</span>`;
             }
 
             const card = `

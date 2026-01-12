@@ -18,7 +18,7 @@ docker run --rm -it -p 1234:1234 -p 8085:8085 ghcr.io/sklopivo/open-plaato-keg:n
   - **Units & Mode**: Switch between Metric/US units, Weight/Volume display mode
   - **Scale Sensitivity**: Adjust pour detection sensitivity (4 levels)
   - **Calibration**: Tare scale, set empty keg weight, calibrate with known weight, temperature offset
-  - **Beer Information**: Set beer style, keg date, max keg volume (stored locally)
+  - **Beer Information**: Set beer style, keg date, OG, FG, ABV calculation, max keg volume (stored locally)
   - **System Status**: View device info, WiFi signal, firmware version, chip temperature, leak detection
 
 - **Keg Command API** - New REST endpoints to send commands to connected kegs:
@@ -29,6 +29,9 @@ docker run --rm -it -p 1234:1234 -p 8085:8085 ghcr.io/sklopivo/open-plaato-keg:n
   - `POST /api/kegs/:id/calibrate-known-weight` - Calibrate with known weight
   - `POST /api/kegs/:id/beer-style` - Set beer style name
   - `POST /api/kegs/:id/date` - Set keg date
+  - `POST /api/kegs/:id/og` - Set original gravity (format: 1.xxx)
+  - `POST /api/kegs/:id/fg` - Set final gravity (format: 1.xxx)
+  - `POST /api/kegs/:id/abv` - Calculate ABV from OG and FG
   - `POST /api/kegs/:id/unit` - Set unit system (metric/us)
   - `POST /api/kegs/:id/measure-unit` - Set measure mode (weight/volume)
   - `POST /api/kegs/:id/keg-mode` - Set keg mode (beer/co2) *experimental*
@@ -64,7 +67,7 @@ docker run --rm -it -p 1234:1234 -p 8085:8085 ghcr.io/sklopivo/open-plaato-keg:n
 
 - **CO₂ Mode** - Switch to CO₂ monitoring mode (pins not fully decoded)
 - **Scale Sensitivity** - No read feedback from keg for current setting
-- **Beer Style/Date** - Stored in local database (keg doesn't echo these values back)
+- **Beer Style/Date/OG/FG/ABV** - Stored in local database (keg doesn't echo these values back)
 
 ## Why this exists?
 
@@ -245,7 +248,12 @@ If Docker isn't your preferred method, you can create an [Elixir Release](https:
         "build": "Jul 20 2020 12:31:35",
         "buff-in": "1024"
       },
-      "id": "00000000000000000000000000000001"
+      "id": "00000000000000000000000000000001",
+      "my_beer_style": "IPA",
+      "my_keg_date": "12.01.2025",
+      "my_og": "1.050",
+      "my_fg": "1.010",
+      "my_abv": "5.25"
     }
   ```
 
@@ -255,7 +263,10 @@ If Docker isn't your preferred method, you can create an [Elixir Release](https:
 - Example topics:
   - `plaato/keg/abc123/amount_left` → `15.5`
   - `plaato/keg/abc123/keg_temperature` → `4.2`
-  - `plaato/keg/abc123/percent_of_beer_left` → `0.78`
+  - `plaato/keg/abc123/percent_of_beer_left` → `12.0`
+  - `plaato/keg/abc123/my_og` → `1.050`
+  - `plaato/keg/abc123/my_fg` → `1.010`
+  - `plaato/keg/abc123/my_abv` → `5.25`
 - Useful for Home Assistant MQTT discovery or simple automations
 
 Both modes can be enabled simultaneously.
@@ -321,7 +332,12 @@ Showcase how to interact with WebSocket and REST API.
                 "build": "Jul 20 2020 12:31:35",
                 "buff-in": "1024"
               },
-              "id": "00000000000000000000000000000001"
+              "id": "00000000000000000000000000000001",
+              "my_beer_style": "IPA",
+              "my_keg_date": "12.01.2025",
+              "my_og": "1.050",
+              "my_fg": "1.010",
+              "my_abv": "5.25"
             }
         ]
       ```
@@ -347,10 +363,13 @@ Showcase how to interact with WebSocket and REST API.
     * `firmware_version`: Keg firmware version
     * `leak_detection`: Leak detection status
     * `min_temperature` / `max_temperature`: Temperature alert thresholds
-    * `og` / `fg`: Original and final gravity values
+    * `og` / `fg`: Original and final gravity values (from hardware)
     * `internal`: System info object (dev, ver, fw, build, tmpl, h-beat, buff-in)
     * `my_beer_style`: User-defined beer style (stored locally)
     * `my_keg_date`: User-defined keg date (stored locally)
+    * `my_og`: User-defined original gravity in format 1.xxx (stored locally)
+    * `my_fg`: User-defined final gravity in format 1.xxx (stored locally)
+    * `my_abv`: Calculated ABV percentage from OG and FG (stored locally)
 
 ### `/api/kegs/{keg_id}`
 
@@ -394,7 +413,12 @@ Showcase how to interact with WebSocket and REST API.
               "build": "Jul 20 2020 12:31:35",
               "buff-in": "1024"
             },
-            "id": "00000000000000000000000000000001"
+            "id": "00000000000000000000000000000001",
+            "my_beer_style": "IPA",
+            "my_keg_date": "12.01.2025",
+            "my_og": "1.050",
+            "my_fg": "1.010",
+            "my_abv": "5.25"
         }
        ```
 * **Fields in Response:** Same as `/api/kegs`

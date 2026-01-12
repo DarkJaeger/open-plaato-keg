@@ -220,6 +220,57 @@
               </div>
             </div>
 
+            <div class="columns">
+              <div class="column">
+                <div class="field">
+                  <label class="label">OG <span style="color: #ff3860;">*</span></label>
+                  <div class="control">
+                    <div class="field has-addons">
+                      <div class="control is-expanded">
+                        <input class="input" type="text" id="og" placeholder="e.g., 1.050" />
+                      </div>
+                      <div class="control">
+                        <button class="button is-primary" onclick="sendOG()">Set</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="column">
+                <div class="field">
+                  <label class="label">FG <span style="color: #ff3860;">*</span></label>
+                  <div class="control">
+                    <div class="field has-addons">
+                      <div class="control is-expanded">
+                        <input class="input" type="text" id="fg" placeholder="e.g., 1.010" />
+                      </div>
+                      <div class="control">
+                        <button class="button is-primary" onclick="sendFG()">Set</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">ABV <span style="color: #ff3860;">*</span></label>
+              <p class="help">Calculated from OG and FG using formula: (OG - FG) × 131.25</p>
+              <div class="control">
+                <div class="field has-addons">
+                  <div class="control is-expanded">
+                    <input class="input" type="text" id="abv" placeholder="--" readonly />
+                  </div>
+                  <div class="control">
+                    <span class="button is-static">%</span>
+                  </div>
+                  <div class="control">
+                    <button class="button is-primary" onclick="calculateABV()">Calculate</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <p class="help has-text-warning-dark">
               <span style="color: #ff3860;">*</span> Beer information is not stored in the keg since there is no feedback pin to read. It is stored in the Open Plaato Keg database.
             </p>
@@ -390,6 +441,21 @@
           updateFieldIfNotFocused("kegDate", data.my_keg_date.trim());
         }
 
+        // OG (stored locally as my_og) - only update if not focused
+        if (data.my_og) {
+          updateFieldIfNotFocused("og", data.my_og.trim());
+        }
+
+        // FG (stored locally as my_fg) - only update if not focused
+        if (data.my_fg) {
+          updateFieldIfNotFocused("fg", data.my_fg.trim());
+        }
+
+        // ABV (stored locally as my_abv) - always update since it's readonly
+        if (data.my_abv) {
+          document.getElementById("abv").value = data.my_abv.trim();
+        }
+
         // Known weight - only update if not focused
         if (data.known_weight) {
           updateFieldIfNotFocused("knownWeight", data.known_weight);
@@ -551,6 +617,9 @@
           document.getElementById("maxVolume").value = "";
           document.getElementById("beerStyle").value = "";
           document.getElementById("kegDate").value = "";
+          document.getElementById("og").value = "";
+          document.getElementById("fg").value = "";
+          document.getElementById("abv").value = "";
           document.getElementById("currentSettings").innerHTML =
             '<p class="has-text-grey">Select a keg to view current settings</p>';
           clearActiveButtons();
@@ -717,6 +786,67 @@
         const value = document.getElementById("kegDate").value;
         if (!value) { showToast("Please enter a date", "warning"); return; }
         sendCommand("date", { value });
+      }
+
+      function validateGravity(value) {
+        // Validate format: 1.xxx (e.g., 1.050, 1.010)
+        const pattern = /^1\.\d{3}$/;
+        return pattern.test(value);
+      }
+
+      function sendOG() {
+        const value = document.getElementById("og").value;
+        if (!value) { showToast("Please enter an OG value", "warning"); return; }
+        if (!validateGravity(value)) { showToast("OG must be in format 1.xxx (e.g., 1.050)", "warning"); return; }
+        sendCommand("og", { value });
+      }
+
+      function sendFG() {
+        const value = document.getElementById("fg").value;
+        if (!value) { showToast("Please enter an FG value", "warning"); return; }
+        if (!validateGravity(value)) { showToast("FG must be in format 1.xxx (e.g., 1.010)", "warning"); return; }
+        sendCommand("fg", { value });
+      }
+
+      function calculateABV() {
+        const kegId = getSelectedKeg();
+        if (!kegId) return;
+
+        const og = document.getElementById("og").value;
+        const fg = document.getElementById("fg").value;
+
+        if (!og || !fg) {
+          showToast("Please enter both OG and FG values", "warning");
+          return;
+        }
+
+        if (!validateGravity(og)) {
+          showToast("OG must be in format 1.xxx (e.g., 1.050)", "warning");
+          return;
+        }
+
+        if (!validateGravity(fg)) {
+          showToast("FG must be in format 1.xxx (e.g., 1.010)", "warning");
+          return;
+        }
+
+        fetch(`/api/kegs/${kegId}/abv`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ og, fg }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.abv !== undefined) {
+              document.getElementById("abv").value = data.abv;
+              showToast(`ABV calculated: ${data.abv}%`, "success");
+            } else {
+              showToast(`Error: ${data.error}`, "danger");
+            }
+          })
+          .catch((err) => {
+            showToast(`Error: ${err.message}`, "danger");
+          });
       }
 
       // ABV commands
