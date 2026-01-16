@@ -1,20 +1,28 @@
 defmodule OpenPlaatoKeg.KegConnectionHandler do
   use ThousandIsland.Handler
   require Logger
+
   alias OpenPlaatoKeg.BlynkProtocol
   alias OpenPlaatoKeg.PlaatoData
   alias OpenPlaatoKeg.PlaatoProtocol
 
-  def handle_connection(_socket, _state) do
-    {:ok, pid} = GenServer.start_link(OpenPlaatoKeg.KegDataProcessor, %{})
-    Process.link(pid)
+  @takeover_retry_ms 100
 
+  def handle_connection(_socket, _state) do
+    # IMPORTANT:
+    # Start a per-connection data processor (no global name).
+    {:ok, pid} = OpenPlaatoKeg.KegDataProcessor.start_link(%{})
+
+    # start_link already links; no need for Process.link/1
     state = %{keg_data_processor: pid, keg_id: nil}
     {:continue, state}
   end
 
   def handle_data(data, socket, state) do
+    # Acknowledge Blynk-style packets
     ThousandIsland.Socket.send(socket, BlynkProtocol.response_success())
+
+    # Process/publish decoded data
     GenServer.cast(state.keg_data_processor, {:keg_data, data})
 
     # Extract keg ID from the data and register socket
@@ -26,7 +34,16 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
   def handle_close(_socket, state) do
     if state.keg_id do
       Logger.info("Keg #{state.keg_id} disconnected")
+
+      # Unregister the socket (only affects this process's registration)
       Registry.unregister(OpenPlaatoKeg.KegSocketRegistry, state.keg_id)
+
+      # Prevent phantom "pouring" UI by pushing a disconnect update.
+      # Plaato values are typically stringy, so "0" is safest.
+      disconnect_update = [is_pouring: "0"]
+
+      OpenPlaatoKeg.Models.KegData.publish(state.keg_id, disconnect_update)
+      OpenPlaatoKeg.WebSocketHandler.publish(state.keg_id, disconnect_update)
     end
 
     :ok
@@ -39,9 +56,37 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
 
       keg_id ->
         Logger.info("Registering socket for keg #{keg_id}")
-        Registry.register(OpenPlaatoKeg.KegSocketRegistry, keg_id, socket)
 
-        %{state | keg_id: keg_id}
+        case Registry.register(OpenPlaatoKeg.KegSocketRegistry, keg_id, socket) do
+          {:ok, _} ->
+            %{state | keg_id: keg_id}
+
+          {:error, {:already_registered, old_pid}} ->
+            Logger.warning(
+              "Keg #{keg_id} already registered by #{inspect(old_pid)}; taking over"
+            )
+
+            # Kill stale handler holding the unique key so we can take over immediately.
+            if old_pid != self(), do: Process.exit(old_pid, :kill)
+
+            Process.sleep(@takeover_retry_ms)
+
+            case Registry.register(OpenPlaatoKeg.KegSocketRegistry, keg_id, socket) do
+              {:ok, _} ->
+                %{state | keg_id: keg_id}
+
+              {:error, reason} ->
+                Logger.warning(
+                  "Failed to register keg #{keg_id} after takeover: #{inspect(reason)}"
+                )
+
+                state
+            end
+
+          {:error, reason} ->
+            Logger.warning("Failed to register keg #{keg_id}: #{inspect(reason)}")
+            state
+        end
     end
   end
 

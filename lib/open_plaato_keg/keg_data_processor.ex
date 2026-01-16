@@ -1,13 +1,17 @@
 defmodule OpenPlaatoKeg.KegDataProcessor do
   use GenServer
   require Logger
+
   alias OpenPlaatoKeg.BlynkProtocol
   alias OpenPlaatoKeg.Models.KegData
   alias OpenPlaatoKeg.PlaatoData
   alias OpenPlaatoKeg.PlaatoProtocol
 
-  def start_link(_ \\ %{}) do
-    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  # IMPORTANT:
+  # This GenServer must be per-connection, NOT globally named.
+  # Otherwise the 2nd keg connection will fail with {:already_started, pid}.
+  def start_link(init_arg \\ %{}) do
+    GenServer.start_link(__MODULE__, init_arg)
   end
 
   def init(state) do
@@ -24,6 +28,7 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     {:noreply, state}
   end
 
+  # First payload may only include the id
   defp process([id: id] = data, _state) do
     OpenPlaatoKeg.Models.KegData.publish(id, data)
     {:noreply, data}
