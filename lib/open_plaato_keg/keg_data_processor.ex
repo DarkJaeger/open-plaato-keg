@@ -2,8 +2,8 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
   use GenServer
   require Logger
 
-  alias OpenPlaatoKeg.Models.AirlockData
   alias OpenPlaatoKeg.BlynkProtocol
+  alias OpenPlaatoKeg.Models.AirlockData
   alias OpenPlaatoKeg.Models.KegData
   alias OpenPlaatoKeg.PlaatoData
   alias OpenPlaatoKeg.PlaatoProtocol
