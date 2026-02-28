@@ -25,36 +25,70 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     |> process(state)
   end
 
-  defp process([], state) do
-    {:noreply, state}
-  end
-
-  # First payload: just the device ID. Store in state as a map; device type not yet known,
-  # so we don't write to either KegData or AirlockData yet.
-  defp process([id: id], _state) do
-    {:noreply, %{id: id}}
-  end
+  defp process([], state), do: {:noreply, state}
 
   defp process(data, state) do
-    Logger.debug("Decoded device data", data: inspect(data, limit: :infinity))
+    # The login packet (get_shared_dash) may arrive in the same TCP frame as
+    # other commands, so we always extract the id from any decoded list rather
+    # than relying on a single-element [id: id] pattern.
+    state =
+      case Keyword.fetch(data, :id) do
+        {:ok, id} -> Map.put(state, :id, id)
+        :error -> state
+      end
 
-    if airlock_data?(data) do
-      process_airlock(data, state)
-    else
-      process_keg(data, state)
+    # Detect device type from pin keys once and cache it in state.
+    state =
+      cond do
+        state[:device_type] != nil -> state
+        airlock_data?(data) -> Map.put(state, :device_type, :airlock)
+        keg_data?(data) -> Map.put(state, :device_type, :keg)
+        true -> state
+      end
+
+    # Strip the id before routing — it is already in state.
+    payload = Keyword.delete(data, :id)
+
+    cond do
+      payload == [] ->
+        {:noreply, state}
+
+      state[:device_type] == :airlock ->
+        Logger.debug("Decoded airlock data", data: inspect(payload, limit: :infinity))
+        # Drop internal metadata — not stored for airlocks.
+        process_airlock(Keyword.delete(payload, :internal), state)
+
+      true ->
+        Logger.debug("Decoded keg data", data: inspect(payload, limit: :infinity))
+        process_keg(payload, state)
     end
   end
 
+  # A packet contains airlock data if it has any of the three airlock pins.
   defp airlock_data?(data) do
     Keyword.has_key?(data, :airlock_bubble_count) or
-      Keyword.has_key?(data, :airlock_temperature)
+      Keyword.has_key?(data, :airlock_temperature) or
+      Keyword.has_key?(data, :airlock_error)
+  end
+
+  # A packet contains keg data if it has any well-known keg-only pins.
+  defp keg_data?(data) do
+    Keyword.has_key?(data, :amount_left) or
+      Keyword.has_key?(data, :keg_temperature) or
+      Keyword.has_key?(data, :percent_of_beer_left) or
+      Keyword.has_key?(data, :is_pouring) or
+      Keyword.has_key?(data, :firmware_version)
   end
 
   defp process_keg(data, state) do
     id = state[:id]
 
-    # Ensure the :id key is always written to KegData so the device appears in devices()
-    data_with_id = if id, do: Keyword.put_new(data, :id, id), else: data
+    # Only register the device in KegData (via the :id key) once we have
+    # confirmed it is a keg, so airlock devices never appear in the keg list.
+    data_with_id =
+      if id && state[:device_type] == :keg,
+        do: Keyword.put_new(data, :id, id),
+        else: data
 
     amount_left_changed? =
       Enum.any?(data, fn {key, _value} -> key == :amount_left end)
@@ -74,7 +108,7 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
   defp process_airlock(data, state) do
     id = state[:id]
 
-    # V100 is a cumulative bubble count; derive BPM from successive readings.
+    # V100 sends cumulative count since power-on. BPM = delta / elapsed_minutes.
     {bpm, new_state} =
       maybe_compute_bpm(Keyword.get(data, :airlock_bubble_count), state)
 
@@ -92,7 +126,6 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     {:noreply, new_state}
   end
 
-  # V100 sends cumulative count since power-on. BPM = delta / elapsed_minutes.
   defp maybe_compute_bpm(nil, state), do: {nil, state}
 
   defp maybe_compute_bpm(count_str, state) do
