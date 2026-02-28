@@ -243,7 +243,7 @@ Both modes can be enabled simultaneously.
 ### `/setup.html`
 
 * **Kegs tab**: Configure and control your kegs — set units, calibration, beer information, and view system status; send commands directly to connected kegs
-* **Airlocks tab**: Set a label for each airlock (e.g. "Primary", "Secondary") and configure Grainfather integration
+* **Airlocks tab**: Set a label for each airlock (e.g. "Primary", "Secondary") and configure Grainfather integration (URL, temperature unit, specific gravity)
 
 ### HTTP REST API
 
@@ -465,8 +465,9 @@ Send commands to a connected keg:
 * **Description:** Configure Grainfather integration for this airlock.
 * **Body:**
   ```json
-  { "enabled": true, "unit": "celsius", "specific_gravity": "1.050" }
+  { "enabled": true, "unit": "celsius", "specific_gravity": "1.050", "url": "https://local.community.grainfather.com/iot/.../custom" }
   ```
+* `url` is the per-airlock Grainfather endpoint URL (found in your Grainfather session). Sending is skipped if the URL is not set.
 * When enabled, airlock data is forwarded to the Grainfather community web app at most once every 15 minutes (requires temperature; BPM is optional).
 
 ### `/api/metrics`
