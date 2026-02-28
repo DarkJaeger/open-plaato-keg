@@ -33,17 +33,18 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
 
   def handle_close(_socket, state) do
     if state.keg_id do
-      Logger.info("Keg #{state.keg_id} disconnected")
+      Logger.info("Device #{state.keg_id} disconnected")
 
       # Unregister the socket (only affects this process's registration)
       Registry.unregister(OpenPlaatoKeg.KegSocketRegistry, state.keg_id)
 
-      # Prevent phantom "pouring" UI by pushing a disconnect update.
-      # Plaato values are typically stringy, so "0" is safest.
-      disconnect_update = [is_pouring: "0"]
-
-      OpenPlaatoKeg.Models.KegData.publish(state.keg_id, disconnect_update)
-      OpenPlaatoKeg.WebSocketHandler.publish(state.keg_id, disconnect_update)
+      # Only push the disconnect update for kegs (not airlocks).
+      # Airlocks don't have is_pouring and their ID won't be in KegData.
+      if state.keg_id in OpenPlaatoKeg.Models.KegData.devices() do
+        disconnect_update = [is_pouring: "0"]
+        OpenPlaatoKeg.Models.KegData.publish(state.keg_id, disconnect_update)
+        OpenPlaatoKeg.WebSocketHandler.publish(state.keg_id, disconnect_update)
+      end
     end
 
     :ok

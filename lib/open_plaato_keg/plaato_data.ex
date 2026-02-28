@@ -36,7 +36,12 @@ defmodule OpenPlaatoKeg.PlaatoData do
     {:hardware, "vw", "89"} => :sensitivity,
     {:hardware, "vw", "92"} => :chip_temperature_string,
     {:hardware, "vw", "93"} => :firmware_version,
-    {:property, "51", "max"} => :max_keg_volume
+    {:property, "51", "max"} => :max_keg_volume,
+
+    # Plaato Airlock pins
+    {:hardware, "vw", "99"} => :airlock_error,
+    {:hardware, "vw", "100"} => :airlock_bubble_count,
+    {:hardware, "vw", "101"} => :airlock_temperature
   }
 
   def decode(commands) when is_list(commands) do
