@@ -19,8 +19,18 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
   end
 
   def handle_data(data, socket, state) do
-    # Acknowledge Blynk-style packets
-    ThousandIsland.Socket.send(socket, BlynkProtocol.response_success())
+    # Acknowledge Blynk-style packets, echoing the msg_id from the incoming frame.
+    # Old firmware (e.g. Plaato Airlock NodeMCU) validates that the response msg_id
+    # matches the request before firing BLYNK_CONNECTED. If we always respond with
+    # msg_id=1 (the default), the login ack is never recognised when internal info
+    # was sent first (as msg_id=1), causing BLYNK_CONNECTED to never fire.
+    ack =
+      case data do
+        <<_cmd::8, msg_id::16, _rest::binary>> -> BlynkProtocol.response_success(msg_id)
+        _ -> BlynkProtocol.response_success()
+      end
+
+    ThousandIsland.Socket.send(socket, ack)
 
     # Process/publish decoded data
     GenServer.cast(state.keg_data_processor, {:keg_data, data})
