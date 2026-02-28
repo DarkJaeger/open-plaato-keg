@@ -56,13 +56,24 @@ Raw TCP bytes from Plaato Keg hardware go through a three-stage decoding pipelin
 
 ### Storage
 
-- Uses Erlang `:dets` for persistence (file-based key-value store at `DATABASE_FILE_PATH`).
-- **KegData** model (`models/keg_data.ex`) — Reads/writes keg state to DETS; merges incoming property updates.
+- Uses Erlang `:dets` for persistence. Two tables are opened at startup:
+  - `:keg_data` — keg scale state, stored at `DATABASE_FILE_PATH`.
+  - `:airlock_data` — airlock/fermentation device state, stored as `airlock_data.bin` in the same directory.
+- **KegData** model (`models/keg_data.ex`) — Reads/writes keg state to `:keg_data` DETS; merges incoming property updates.
+- **AirlockData** model (`models/airlock_data.ex`) — Reads/writes airlock state (temperature, bubbles_per_min, label, Grainfather settings) to `:airlock_data` DETS. Airlocks are identified by a caller-chosen string ID (not a Blynk token).
 
 ### HTTP Layer
 
-- **HttpRouter** (`http_router.ex`) — Plug/Bandit router serving REST API (`/api/kegs`, `/api/metrics`, `/api/alive`), WebSocket upgrades (`/ws`), static files, and keg command endpoints (`/api/kegs/:id/*`).
-- **WebSocketHandler** — Broadcasts keg updates to connected browser clients via `WebSocketConnectionRegistry` (duplicate Registry).
+- **HttpRouter** (`http_router.ex`) — Plug/Bandit router serving:
+  - REST API for kegs: `/api/kegs`, `/api/kegs/devices`, `/api/kegs/connected`, `/api/kegs/:id`, and command endpoints `/api/kegs/:id/*` (tare, calibrate, beer-style, og, fg, abv, unit, keg-mode, sensitivity, etc.).
+  - REST API for airlocks: `/api/airlocks`, `/api/airlocks/:id`, `/api/airlocks/:id/data` (POST temperature/bubbles_per_min), `/api/airlocks/:id/label`, `/api/airlocks/:id/grainfather`.
+  - `/api/metrics` (Prometheus), `/api/alive`, `/ws` (WebSocket upgrade), static files.
+- **WebSocketHandler** — Broadcasts updates to browser clients via `WebSocketConnectionRegistry`. Keg updates send raw keg JSON; airlock updates send `%{type: "airlock", data: ...}`.
+
+### Airlock & Grainfather Integration
+
+- **AirlockData** devices are external (not Blynk hardware); clients POST data directly to `/api/airlocks/:id/data`.
+- **Grainfather** (`grainfather.ex`) — On each airlock data submission, optionally forwards temperature, bubbles-per-minute, and specific gravity to the Grainfather community API. Throttled to at most once per 15 minutes per airlock (persisted via `grainfather_last_sent_at` in DETS). Per-airlock Grainfather settings (`grainfather_enabled`, `grainfather_unit`, `grainfather_specific_gravity`) are configured via `/api/airlocks/:id/grainfather`.
 
 ### Supervision Tree
 
