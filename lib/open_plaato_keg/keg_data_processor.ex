@@ -108,9 +108,31 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
   defp process_airlock(data, state) do
     id = state[:id]
 
+    # The airlock deep-sleeps between readings, so each wake-up is a new TCP
+    # connection with a fresh GenServer state. Seed the previous count/time from
+    # DETS on the first packet of each connection so BPM can still be computed.
+    state =
+      if id != nil and state[:airlock_last_count] == nil do
+        persisted = AirlockData.get(id)
+
+        state
+        |> seed_integer(:airlock_last_count, persisted[:last_bubble_count])
+        |> seed_integer(:airlock_last_count_time, persisted[:last_bubble_count_time])
+      else
+        state
+      end
+
     # V100 sends cumulative count since power-on. BPM = delta / elapsed_minutes.
     {bpm, new_state} =
       maybe_compute_bpm(Keyword.get(data, :airlock_bubble_count), state)
+
+    # Persist the updated count/time so the next wake-up connection can use it.
+    if id != nil and new_state[:airlock_last_count] != state[:airlock_last_count] do
+      AirlockData.publish(id, [
+        {:last_bubble_count, to_string(new_state[:airlock_last_count])},
+        {:last_bubble_count_time, to_string(new_state[:airlock_last_count_time])}
+      ])
+    end
 
     airlock_fields =
       []
@@ -124,6 +146,15 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     end
 
     {:noreply, new_state}
+  end
+
+  defp seed_integer(state, _key, nil), do: state
+
+  defp seed_integer(state, key, value) when is_binary(value) do
+    case Integer.parse(value) do
+      {int, _} -> Map.put(state, key, int)
+      :error -> state
+    end
   end
 
   defp maybe_compute_bpm(nil, state), do: {nil, state}
