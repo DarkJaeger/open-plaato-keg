@@ -293,6 +293,74 @@
             </div>
           </div>
 
+          <!-- Airlocks Section (separate from keg scales) -->
+          <div class="box section-box">
+            <h2 class="title is-4">Airlocks</h2>
+            <p class="help">Airlocks are fermentation sensors (temperature, bubbles/min). Set a label for each so they are recognizable on the home page.</p>
+
+            <div class="field">
+              <label class="label" for="airlockId">Select Airlock</label>
+              <div class="control">
+                <div class="select is-fullwidth">
+                  <select id="airlockId" name="airlockId">
+                    <option value="">Select an airlock...</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="label">Airlock Label</label>
+              <div class="control">
+                <div class="field has-addons">
+                  <div class="control is-expanded">
+                    <input class="input" type="text" id="airlockLabel" placeholder="e.g., Primary, Secondary" />
+                  </div>
+                  <div class="control">
+                    <button class="button is-primary" onclick="sendAirlockLabel()">Set</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <hr style="border-color: rgba(245, 158, 11, 0.2); margin: 1rem 0;" />
+            <h3 class="title is-5">Grainfather</h3>
+            <p class="help">Send this airlock's data to the Grainfather community web app (POST at most every 15 minutes).</p>
+            <div class="field">
+              <label class="label">
+                <input type="checkbox" id="grainfatherEnabled" />
+                <span style="margin-left: 0.5rem;">Send to Grainfather</span>
+              </label>
+            </div>
+            <div class="columns">
+              <div class="column">
+                <div class="field">
+                  <label class="label">Temperature unit</label>
+                  <div class="control">
+                    <div class="select is-fullwidth">
+                      <select id="grainfatherUnit">
+                        <option value="celsius">Celsius</option>
+                        <option value="fahrenheit">Fahrenheit</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="column">
+                <div class="field">
+                  <label class="label">Specific gravity</label>
+                  <p class="help">Required by API; use your current reading or default 1.0</p>
+                  <div class="control">
+                    <input class="input" type="number" id="grainfatherSG" placeholder="1.0" step="0.001" min="0.9" max="1.2" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <button class="button is-primary" onclick="sendGrainfatherSettings()">Save Grainfather settings</button>
+            </div>
+          </div>
+
           <!-- Experimental Section -->
           <div class="box section-box">
             <h2 class="title is-4">Experimental</h2>
@@ -655,6 +723,58 @@
       loadConnectedKegs();
       setInterval(loadConnectedKegs, 10000);
 
+      const airlockIdSelect = document.getElementById("airlockId");
+
+      function loadAirlocks() {
+        fetch("/api/airlocks")
+          .then((response) => response.json())
+          .then((airlocks) => {
+            const currentValue = airlockIdSelect.value;
+            airlockIdSelect.innerHTML = '<option value="">Select an airlock...</option>';
+            airlocks.forEach((a) => {
+              const option = document.createElement("option");
+              option.value = a.id;
+              option.textContent = (a.label && a.label.trim()) ? a.label.trim() : a.id;
+              if (a.id === currentValue) option.selected = true;
+              airlockIdSelect.appendChild(option);
+            });
+            if (currentValue && airlocks.some((a) => a.id === currentValue)) {
+              loadAirlockData(currentValue);
+            }
+          })
+          .catch(() => {});
+      }
+
+      function loadAirlockData(airlockId) {
+        if (!airlockId) return;
+        fetch(`/api/airlocks/${airlockId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (document.activeElement !== document.getElementById("airlockLabel")) {
+              document.getElementById("airlockLabel").value = (data.label || "").trim();
+            }
+            document.getElementById("grainfatherEnabled").checked = data.grainfather_enabled === "true";
+            document.getElementById("grainfatherUnit").value = (data.grainfather_unit === "fahrenheit") ? "fahrenheit" : "celsius";
+            const sg = data.grainfather_specific_gravity;
+            document.getElementById("grainfatherSG").value = (sg !== undefined && sg !== null && sg !== "") ? String(sg) : "1";
+          })
+          .catch(() => {});
+      }
+
+      airlockIdSelect.addEventListener("change", () => {
+        const id = airlockIdSelect.value;
+        if (id) loadAirlockData(id);
+        else {
+          document.getElementById("airlockLabel").value = "";
+          document.getElementById("grainfatherEnabled").checked = false;
+          document.getElementById("grainfatherUnit").value = "celsius";
+          document.getElementById("grainfatherSG").value = "1";
+        }
+      });
+
+      loadAirlocks();
+      setInterval(loadAirlocks, 10000);
+
       function getSelectedKeg() {
         const kegId = kegIdSelect.value;
         if (!kegId) {
@@ -780,6 +900,55 @@
         const value = document.getElementById("beerStyle").value;
         if (!value) { showToast("Please enter a beer style", "warning"); return; }
         sendCommand("beer-style", { value });
+      }
+
+      function sendAirlockLabel() {
+        const airlockId = airlockIdSelect.value;
+        if (!airlockId) {
+          showToast("Please select an airlock first", "warning");
+          return;
+        }
+        const value = document.getElementById("airlockLabel").value.trim();
+        fetch(`/api/airlocks/${airlockId}/label`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ value: value || "" }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "ok") {
+              showToast("Airlock label saved", "success");
+              loadAirlocks();
+            } else {
+              showToast(`Error: ${data.error}`, "danger");
+            }
+          })
+          .catch((err) => showToast(`Error: ${err.message}`, "danger"));
+      }
+
+      function sendGrainfatherSettings() {
+        const airlockId = airlockIdSelect.value;
+        if (!airlockId) {
+          showToast("Please select an airlock first", "warning");
+          return;
+        }
+        const enabled = document.getElementById("grainfatherEnabled").checked;
+        const unit = document.getElementById("grainfatherUnit").value;
+        const sg = document.getElementById("grainfatherSG").value.trim() || "1";
+        fetch(`/api/airlocks/${airlockId}/grainfather`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled, unit, specific_gravity: sg }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "ok") {
+              showToast("Grainfather settings saved", "success");
+            } else {
+              showToast(`Error: ${data.error}`, "danger");
+            }
+          })
+          .catch((err) => showToast(`Error: ${err.message}`, "danger"));
       }
 
       function sendKegDate() {

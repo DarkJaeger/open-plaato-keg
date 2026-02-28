@@ -15,9 +15,16 @@ defmodule OpenPlaatoKeg do
     db_folder = Path.dirname(db_file_path)
     File.mkdir_p!(db_folder)
 
-    {:ok, _table} =
+    {:ok, _keg_table} =
       :dets.open_file(:keg_data, [
         {:file, String.to_charlist(db_file_path)}
+      ])
+
+    # Airlocks are separate from kegs; own DETS file
+    airlock_path = Path.join(db_folder, "airlock_data.bin")
+    {:ok, _airlock_table} =
+      :dets.open_file(:airlock_data, [
+        {:file, String.to_charlist(airlock_path)}
       ])
   end
 

@@ -38,8 +38,15 @@
     <section class="section">
         <div class="container">
             <h1 class="title is-1">Kegs</h1>
-
             <div class="columns is-multiline" id="kegContainer"></div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="container">
+            <h1 class="title is-1">Airlocks</h1>
+            <p class="subtitle">Fermentation airlocks (temperature and bubbles per minute)</p>
+            <div class="columns is-multiline" id="airlockContainer"></div>
         </div>
     </section>
   </div>
@@ -64,6 +71,18 @@
       }
 
         const kegContainer = document.getElementById('kegContainer');
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Escape a string for safe use inside a CSS attribute selector [attr="value"]
+        function cssEscapeAttrValue(str) {
+            if (str == null || typeof str !== 'string') return '';
+            return String(str).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        }
 
         function createKegCard(kegData) {
             const column = document.createElement('div');
@@ -118,6 +137,30 @@
             return column;
         }
 
+        const airlockContainer = document.getElementById('airlockContainer');
+        const tempUnit = '°C';
+
+        function createAirlockCard(airlockData) {
+            const column = document.createElement('div');
+            column.classList.add('column', 'is-one-third');
+            const temp = airlockData.temperature != null ? parseFloat(airlockData.temperature) : NaN;
+            const bpm = airlockData.bubbles_per_min != null ? parseFloat(airlockData.bubbles_per_min) : NaN;
+            const label = (airlockData.label && airlockData.label.trim()) ? escapeHtml(airlockData.label.trim()) : 'Airlock';
+            const card = `
+                <div class="card airlock-card" data-airlock-id="${escapeHtml(airlockData.id)}">
+                    <div class="card-content">
+                        <p class="title is-5">${label}</p>
+                        <div class="airlock-row">
+                            ${!isNaN(temp) ? `<span class="airlock-value">${temp.toFixed(1)}${tempUnit}</span>` : ''}
+                            ${!isNaN(bpm) ? `<span class="airlock-value">${bpm.toFixed(1)} bpm</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            column.innerHTML = card;
+            return column;
+        }
+
         // Fetch initial keg data
         fetch('/api/kegs')
             .then(response => response.json())
@@ -134,6 +177,22 @@
                 kegContainer.innerHTML = '<div class="column"><p class="has-text-danger">Error loading kegs: ' + err.message + '</p></div>';
             });
 
+        // Fetch initial airlock data
+        fetch('/api/airlocks')
+            .then(response => response.json())
+            .then(airlocks => {
+                if (airlocks.length === 0) {
+                    airlockContainer.innerHTML = '<div class="column"><p class="has-text-grey">No airlocks yet. Send data to <code>POST /api/airlocks/:id/data</code> to add one.</p></div>';
+                } else {
+                    airlocks.forEach(airlock => {
+                        airlockContainer.appendChild(createAirlockCard(airlock));
+                    });
+                }
+            })
+            .catch(err => {
+                airlockContainer.innerHTML = '<div class="column"><p class="has-text-danger">Error loading airlocks: ' + err.message + '</p></div>';
+            });
+
         // WebSocket connection
         const socket = new WebSocket('/ws');
 
@@ -142,16 +201,28 @@
         });
 
         socket.addEventListener('message', (event) => {
-            const updatedKeg = JSON.parse(event.data);
-            // Find the existing keg card and update its content
-            const kegId = updatedKeg.id;
-            const existingCard = document.querySelector(`#kegContainer [data-keg-id="${kegId}"]`);
-            if (existingCard) {
-                const newCard = createKegCard(updatedKeg);
-                existingCard.innerHTML = newCard.querySelector('.card').innerHTML;
-            } else if (kegId) {
-                // New keg appeared, add it
-                kegContainer.appendChild(createKegCard(updatedKeg));
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'airlock') {
+                const data = msg.data;
+                const airlockId = data.id;
+                const existingCard = document.querySelector(`#airlockContainer [data-airlock-id="${cssEscapeAttrValue(airlockId)}"]`);
+                if (existingCard) {
+                    const newCol = createAirlockCard(data);
+                    const col = existingCard.closest('.column');
+                    if (col) col.innerHTML = newCol.innerHTML;
+                } else if (airlockId) {
+                    airlockContainer.appendChild(createAirlockCard(data));
+                }
+            } else {
+                const updatedKeg = msg;
+                const kegId = updatedKeg.id;
+                const existingCard = document.querySelector(`#kegContainer [data-keg-id="${cssEscapeAttrValue(kegId)}"]`);
+                if (existingCard) {
+                    const newCard = createKegCard(updatedKeg);
+                    existingCard.innerHTML = newCard.querySelector('.card').innerHTML;
+                } else if (kegId) {
+                    kegContainer.appendChild(createKegCard(updatedKeg));
+                }
             }
         });
 
