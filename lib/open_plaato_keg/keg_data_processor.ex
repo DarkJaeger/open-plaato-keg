@@ -29,10 +29,10 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     {:noreply, state}
   end
 
-  # First payload: just the device ID. Store in state; device type not yet known,
+  # First payload: just the device ID. Store in state as a map; device type not yet known,
   # so we don't write to either KegData or AirlockData yet.
-  defp process([id: _id] = data, _state) do
-    {:noreply, data}
+  defp process([id: id], _state) do
+    {:noreply, %{id: id}}
   end
 
   defp process(data, state) do
@@ -110,8 +110,8 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
 
         new_state =
           state
-          |> Keyword.put(:airlock_last_count, new_count)
-          |> Keyword.put(:airlock_last_count_time, now)
+          |> Map.put(:airlock_last_count, new_count)
+          |> Map.put(:airlock_last_count_time, now)
 
         {bpm, new_state}
 
