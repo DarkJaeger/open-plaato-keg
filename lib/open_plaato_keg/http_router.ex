@@ -1,11 +1,11 @@
 defmodule OpenPlaatoKeg.HttpRouter do
   use Plug.Router
+  alias OpenPlaatoKeg.Models.AirlockData
   alias OpenPlaatoKeg.KegCommander
   alias OpenPlaatoKeg.Models.KegData
-  alias OpenPlaatoKeg.Models.AirlockData
-  alias OpenPlaatoKeg.WebSocketHandler
   alias OpenPlaatoKeg.Metrics
   alias OpenPlaatoKeg.MqttHandler
+  alias OpenPlaatoKeg.WebSocketHandler
 
   plug(Plug.Static,
     at: "/",

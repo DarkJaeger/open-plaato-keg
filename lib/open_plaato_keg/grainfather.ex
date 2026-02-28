@@ -19,14 +19,14 @@ defmodule OpenPlaatoKeg.Grainfather do
         _ -> false
       end
 
-    unless enabled? do
-      :skip
-    else
+    if enabled? do
       if throttle_ok?(airlock) do
         do_send(airlock_id, airlock, temperature, bubbles_per_min)
       else
         :throttled
       end
+    else
+      :skip
     end
   end
 

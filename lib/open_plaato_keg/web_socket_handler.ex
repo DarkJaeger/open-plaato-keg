@@ -1,6 +1,6 @@
 defmodule OpenPlaatoKeg.WebSocketHandler do
-  alias OpenPlaatoKeg.Models.KegData
   alias OpenPlaatoKeg.Models.AirlockData
+  alias OpenPlaatoKeg.Models.KegData
 
   def init(state) do
     Registry.register(OpenPlaatoKeg.WebSocketConnectionRegistry, "websocket_clients", self())
