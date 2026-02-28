@@ -299,11 +299,13 @@ defmodule OpenPlaatoKeg.HttpRouter do
       _ -> "celsius"
     end
     sg = params["specific_gravity"] |> parse_airlock_value() |> Kernel.||("1.0")
+    url = (params["url"] || "") |> to_string() |> String.trim()
 
     data = [
       {:grainfather_enabled, to_string(enabled)},
       {:grainfather_unit, unit},
-      {:grainfather_specific_gravity, sg}
+      {:grainfather_specific_gravity, sg},
+      {:grainfather_url, url}
     ]
 
     AirlockData.publish(airlock_id, data)
@@ -314,7 +316,8 @@ defmodule OpenPlaatoKeg.HttpRouter do
       command: "grainfather",
       grainfather_enabled: enabled,
       grainfather_unit: unit,
-      grainfather_specific_gravity: sg
+      grainfather_specific_gravity: sg,
+      grainfather_url: url
     })
   end
 

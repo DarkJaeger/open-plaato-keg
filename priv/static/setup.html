@@ -357,6 +357,13 @@
               </div>
             </div>
             <div class="field">
+              <label class="label">Grainfather URL</label>
+              <p class="help">Endpoint URL from your Grainfather session (e.g. https://local.community.grainfather.com/iot/…/custom). Required to send data.</p>
+              <div class="control">
+                <input class="input" type="text" id="grainfatherUrl" placeholder="https://local.community.grainfather.com/iot/…/custom" />
+              </div>
+            </div>
+            <div class="field">
               <button class="button is-primary" onclick="sendGrainfatherSettings()">Save Grainfather settings</button>
             </div>
           </div>
@@ -757,6 +764,7 @@
             document.getElementById("grainfatherUnit").value = (data.grainfather_unit === "fahrenheit") ? "fahrenheit" : "celsius";
             const sg = data.grainfather_specific_gravity;
             document.getElementById("grainfatherSG").value = (sg !== undefined && sg !== null && sg !== "") ? String(sg) : "1";
+            document.getElementById("grainfatherUrl").value = data.grainfather_url || "";
           })
           .catch(() => {});
       }
@@ -769,6 +777,7 @@
           document.getElementById("grainfatherEnabled").checked = false;
           document.getElementById("grainfatherUnit").value = "celsius";
           document.getElementById("grainfatherSG").value = "1";
+          document.getElementById("grainfatherUrl").value = "";
         }
       });
 
@@ -935,10 +944,11 @@
         const enabled = document.getElementById("grainfatherEnabled").checked;
         const unit = document.getElementById("grainfatherUnit").value;
         const sg = document.getElementById("grainfatherSG").value.trim() || "1";
+        const url = document.getElementById("grainfatherUrl").value.trim();
         fetch(`/api/airlocks/${airlockId}/grainfather`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ enabled, unit, specific_gravity: sg }),
+          body: JSON.stringify({ enabled, unit, specific_gravity: sg, url }),
         })
           .then((response) => response.json())
           .then((data) => {

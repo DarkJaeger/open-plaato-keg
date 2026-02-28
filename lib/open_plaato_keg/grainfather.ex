@@ -6,7 +6,6 @@ defmodule OpenPlaatoKeg.Grainfather do
   require Logger
   alias OpenPlaatoKeg.Models.AirlockData
 
-  @url "https://local.community.grainfather.com/iot/puff-tact/custom"
   @throttle_minutes 15
 
   def maybe_send(airlock_id, temperature, bubbles_per_min) do
@@ -19,9 +18,11 @@ defmodule OpenPlaatoKeg.Grainfather do
         _ -> false
       end
 
-    if enabled? do
+    url = airlock[:grainfather_url] |> to_string() |> String.trim()
+
+    if enabled? and url != "" do
       if throttle_ok?(airlock) do
-        do_send(airlock_id, airlock, temperature, bubbles_per_min)
+        do_send(airlock_id, airlock, url, temperature, bubbles_per_min)
       else
         :throttled
       end
@@ -46,7 +47,7 @@ defmodule OpenPlaatoKeg.Grainfather do
     System.system_time(:millisecond)
   end
 
-  defp do_send(airlock_id, airlock, temperature, bubbles_per_min) do
+  defp do_send(airlock_id, airlock, url, temperature, bubbles_per_min) do
     unit = airlock[:grainfather_unit] || "celsius"
     sg = parse_specific_gravity(airlock[:grainfather_specific_gravity])
 
@@ -83,7 +84,7 @@ defmodule OpenPlaatoKeg.Grainfather do
           b when is_number(b) -> Map.put(body, "bpm", round(b))
         end
 
-      case Req.post(@url, json: body) do
+      case Req.post(url, json: body) do
         {:ok, %{status: status}} when status in 200..299 ->
           AirlockData.publish(airlock_id, [{:grainfather_last_sent_at, to_string(now_ms())}])
           Logger.info("Grainfather: sent airlock #{airlock_id} (status #{status})")
