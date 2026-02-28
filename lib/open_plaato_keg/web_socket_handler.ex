@@ -1,5 +1,6 @@
 defmodule OpenPlaatoKeg.WebSocketHandler do
   alias OpenPlaatoKeg.Models.KegData
+  alias OpenPlaatoKeg.Models.AirlockData
 
   def init(state) do
     Registry.register(OpenPlaatoKeg.WebSocketConnectionRegistry, "websocket_clients", self())
@@ -24,6 +25,21 @@ defmodule OpenPlaatoKeg.WebSocketHandler do
       fn entries ->
         for {pid, _} <- entries do
           send(pid, {:broadcast, Poison.encode!(keg_all_data)})
+        end
+      end
+    )
+  end
+
+  def publish_airlock(id, _data) do
+    airlock_data = AirlockData.get(id)
+    message = Poison.encode!(%{type: "airlock", data: airlock_data})
+
+    Registry.dispatch(
+      OpenPlaatoKeg.WebSocketConnectionRegistry,
+      "websocket_clients",
+      fn entries ->
+        for {pid, _} <- entries do
+          send(pid, {:broadcast, message})
         end
       end
     )

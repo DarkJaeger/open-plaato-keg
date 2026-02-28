@@ -704,6 +704,34 @@ body {
   50% { opacity: 0.6; }
 }
 
+/* Airlock (fermentation) row on keg cards */
+.airlock-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  border-top: 1px solid rgba(245, 158, 11, 0.15);
+  flex-wrap: wrap;
+}
+
+.airlock-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(254, 252, 232, 0.5);
+  margin-right: var(--space-xs);
+}
+
+.airlock-value {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--amber-400);
+}
+
 /* Utility classes */
 .is-hidden {
   display: none !important;

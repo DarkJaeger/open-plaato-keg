@@ -2,6 +2,10 @@ defmodule OpenPlaatoKeg.HttpRouter do
   use Plug.Router
   alias OpenPlaatoKeg.KegCommander
   alias OpenPlaatoKeg.Models.KegData
+  alias OpenPlaatoKeg.Models.AirlockData
+  alias OpenPlaatoKeg.WebSocketHandler
+  alias OpenPlaatoKeg.Metrics
+  alias OpenPlaatoKeg.MqttHandler
 
   plug(Plug.Static,
     at: "/",
@@ -214,6 +218,107 @@ defmodule OpenPlaatoKeg.HttpRouter do
   end
 
   # ============================================
+  # Airlock (fermentation) devices – separate from keg scales
+  # ============================================
+
+  get "api/airlocks" do
+    data = AirlockData.all()
+
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(200, Poison.encode!(data))
+  end
+
+  get "api/airlocks/:id" do
+    id = conn.params["id"]
+    data = AirlockData.get(id)
+
+    if id in AirlockData.devices() do
+      conn
+      |> put_resp_content_type("application/json")
+      |> send_resp(200, Poison.encode!(data))
+    else
+      conn
+      |> put_resp_content_type("application/json")
+      |> send_resp(404, Poison.encode!(%{error: "not_found"}))
+    end
+  end
+
+  # Submit temperature and/or bubbles per minute from an airlock device (id chosen by device/user).
+  post "api/airlocks/:id/data" do
+    airlock_id = conn.params["id"]
+    params = conn.body_params || %{}
+
+    temperature = parse_airlock_value(params["temperature"])
+    bubbles_per_min = parse_airlock_value(params["bubbles_per_min"])
+
+    cond do
+      temperature == nil and bubbles_per_min == nil ->
+        json_response(conn, 400, %{error: "At least one of temperature or bubbles_per_min is required"})
+
+      true ->
+        data =
+          []
+          |> maybe_append(:temperature, temperature)
+          |> maybe_append(:bubbles_per_min, bubbles_per_min)
+
+        AirlockData.publish(airlock_id, data)
+        WebSocketHandler.publish_airlock(airlock_id, data)
+
+        # Send to Grainfather if enabled (throttled to every 15 min by Grainfather module)
+        OpenPlaatoKeg.Grainfather.maybe_send(airlock_id, temperature, bubbles_per_min)
+
+        response =
+          %{status: "ok", command: "airlock_data"}
+          |> maybe_put_response("temperature", temperature)
+          |> maybe_put_response("bubbles_per_min", bubbles_per_min)
+
+        json_response(conn, 200, response)
+    end
+  end
+
+  # Set airlock label (e.g. "Primary", "Secondary"). Configurable from setup page.
+  post "api/airlocks/:id/label" do
+    airlock_id = conn.params["id"]
+    value = (conn.body_params || %{})["value"] |> Kernel.to_string() |> String.trim()
+
+    AirlockData.publish(airlock_id, [{:label, value}])
+    WebSocketHandler.publish_airlock(airlock_id, [{:label, value}])
+
+    json_response(conn, 200, %{status: "ok", command: "airlock_label", value: value})
+  end
+
+  # Grainfather: enable/disable and options for sending this airlock's data to Grainfather web app (max every 15 min).
+  post "api/airlocks/:id/grainfather" do
+    airlock_id = conn.params["id"]
+    params = conn.body_params || %{}
+
+    enabled = params["enabled"] in [true, "true", "1"]
+    unit = case params["unit"] do
+      "fahrenheit" -> "fahrenheit"
+      _ -> "celsius"
+    end
+    sg = params["specific_gravity"] |> parse_airlock_value() |> Kernel.||("1.0")
+
+    data = [
+      {:grainfather_enabled, to_string(enabled)},
+      {:grainfather_unit, unit},
+      {:grainfather_specific_gravity, sg}
+    ]
+
+    AirlockData.publish(airlock_id, data)
+    WebSocketHandler.publish_airlock(airlock_id, data)
+
+    json_response(conn, 200, %{
+      status: "ok",
+      command: "grainfather",
+      grainfather_enabled: enabled,
+      grainfather_unit: unit,
+      grainfather_specific_gravity: sg
+    })
+  end
+
+  # ============================================
   # Settings Commands
   # ============================================
 
@@ -325,4 +430,22 @@ defmodule OpenPlaatoKeg.HttpRouter do
     |> put_resp_content_type("application/json")
     |> send_resp(status, Poison.encode!(data))
   end
+
+  # Airlock: accept number or string that parses as a complete number (no trailing junk); return string for storage/metrics
+  defp parse_airlock_value(nil), do: nil
+  defp parse_airlock_value(v) when is_number(v), do: to_string(v)
+  defp parse_airlock_value(v) when is_binary(v) do
+    case Float.parse(v) do
+      {_num, ""} -> v
+      {_num, _rest} -> nil
+      :error -> nil
+    end
+  end
+  defp parse_airlock_value(_), do: nil
+
+  defp maybe_append(list, _key, nil), do: list
+  defp maybe_append(list, key, value), do: [{key, value} | list] |> Enum.reverse()
+
+  defp maybe_put_response(map, _key, nil), do: map
+  defp maybe_put_response(map, key, value), do: Map.put(map, key, value)
 end

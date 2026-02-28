@@ -38,6 +38,8 @@ docker run --rm -it -p 1234:1234 -p 8085:8085 ghcr.io/sklopivo/open-plaato-keg:n
   - `POST /api/kegs/:id/sensitivity` - Set scale sensitivity
   - `GET /api/kegs/connected` - List currently connected kegs
 
+- **Airlocks (fermentation sensors)** - Airlocks are separate from keg scales. Each airlock has its own id (chosen by the device or user). Use **Setup → Airlocks** to set a label (e.g. Primary, Secondary) and optional **Grainfather** integration. API: `GET /api/airlocks`, `GET /api/airlocks/:id`, `POST /api/airlocks/:id/data` (body: `temperature`, `bubbles_per_min`), `POST /api/airlocks/:id/label` (body: `value`), `POST /api/airlocks/:id/grainfather` (body: `enabled`, `unit` "celsius"|"fahrenheit", `specific_gravity`). With Grainfather enabled, airlock data is sent to the Grainfather community web app at most every 15 minutes (temperature, specific gravity, optional bpm).
+
 - **Improved Home Page (`/index.html`)**:
   - Real-time updates via WebSocket
   - Shows beer style and keg date as card title
