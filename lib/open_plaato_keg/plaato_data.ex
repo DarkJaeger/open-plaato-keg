@@ -61,7 +61,7 @@ defmodule OpenPlaatoKeg.PlaatoData do
   def decode({type, kind, id, data} = message) do
     case Map.get(@plaato_data, {type, kind, id}) do
       nil ->
-        Logger.debug("Unknown data type", data: inspect(message))
+        Logger.info("Unknown pin data (not mapped)", data: inspect(message))
 
         if Application.get_env(:open_plaato_keg, :include_unknown_data),
           do: {"_#{type}_#{kind}_#{id}", data},
