@@ -82,24 +82,29 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
 
   defp process_keg(data, state) do
     id = state[:id]
+    confirmed_keg? = state[:device_type] == :keg
 
     # Only register the device in KegData (via the :id key) once we have
     # confirmed it is a keg, so airlock devices never appear in the keg list.
     data_with_id =
-      if id && state[:device_type] == :keg,
+      if id && confirmed_keg?,
         do: Keyword.put_new(data, :id, id),
         else: data
 
     amount_left_changed? =
       Enum.any?(data, fn {key, _value} -> key == :amount_left end)
 
+    # WebSocket/MQTT/BarHelper are only fired for confirmed kegs — this prevents
+    # phantom keg cards appearing when an airlock's internal packet arrives before
+    # its V99/V100/V101 pins (which is what sets device_type to :airlock).
     publish(id, data_with_id, [
       {&KegData.publish/2, fn -> true end},
       {&OpenPlaatoKeg.Metrics.publish/2, fn -> true end},
-      {&OpenPlaatoKeg.WebSocketHandler.publish/2, fn -> true end},
-      {&OpenPlaatoKeg.MqttHandler.publish/2, fn -> OpenPlaatoKeg.mqtt_config()[:enabled] end},
+      {&OpenPlaatoKeg.WebSocketHandler.publish/2, fn -> confirmed_keg? end},
+      {&OpenPlaatoKeg.MqttHandler.publish/2,
+       fn -> confirmed_keg? and OpenPlaatoKeg.mqtt_config()[:enabled] end},
       {&OpenPlaatoKeg.BarHelper.publish/2,
-       fn -> amount_left_changed? and OpenPlaatoKeg.barhelper_config()[:enabled] end}
+       fn -> confirmed_keg? and amount_left_changed? and OpenPlaatoKeg.barhelper_config()[:enabled] end}
     ])
 
     {:noreply, state}
