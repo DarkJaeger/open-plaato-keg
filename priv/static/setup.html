@@ -366,6 +366,68 @@
             <div class="field">
               <button class="button is-primary" onclick="sendGrainfatherSettings()">Save Grainfather settings</button>
             </div>
+
+            <hr style="border-color: rgba(245, 158, 11, 0.2); margin: 1rem 0;" />
+            <h3 class="title is-5">Brewfather</h3>
+            <p class="help">Send this airlock's data to Brewfather via custom stream (POST at most every 15 minutes).</p>
+            <div class="field">
+              <label class="label">
+                <input type="checkbox" id="brewfatherEnabled" />
+                <span style="margin-left: 0.5rem;">Send to Brewfather</span>
+              </label>
+            </div>
+            <div class="columns">
+              <div class="column">
+                <div class="field">
+                  <label class="label">Temperature unit</label>
+                  <div class="control">
+                    <div class="select is-fullwidth">
+                      <select id="brewfatherUnit">
+                        <option value="celsius">Celsius</option>
+                        <option value="fahrenheit">Fahrenheit</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="column">
+                <div class="field">
+                  <label class="label">Specific gravity</label>
+                  <p class="help">Current SG reading or default 1.0</p>
+                  <div class="control">
+                    <input class="input" type="number" id="brewfatherSG" placeholder="1.0" step="0.001" min="0.9" max="1.2" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="columns">
+              <div class="column">
+                <div class="field">
+                  <label class="label">Original gravity <span class="has-text-grey">(optional)</span></label>
+                  <div class="control">
+                    <input class="input" type="number" id="brewfatherOG" placeholder="e.g. 1.055" step="0.001" min="0.9" max="1.2" />
+                  </div>
+                </div>
+              </div>
+              <div class="column">
+                <div class="field">
+                  <label class="label">Batch volume L <span class="has-text-grey">(optional)</span></label>
+                  <div class="control">
+                    <input class="input" type="number" id="brewfatherBatchVolume" placeholder="e.g. 20" step="0.1" min="0" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label">Brewfather stream URL</label>
+              <p class="help">Custom stream URL from Brewfather (e.g. http://log.brewfather.net/stream?id=XXXX). Required to send data.</p>
+              <div class="control">
+                <input class="input" type="text" id="brewfatherUrl" placeholder="http://log.brewfather.net/stream?id=XXXX" />
+              </div>
+            </div>
+            <div class="field">
+              <button class="button is-primary" onclick="sendBrewfatherSettings()">Save Brewfather settings</button>
+            </div>
           </div>
 
           <!-- Experimental Section -->
@@ -760,11 +822,20 @@
             if (document.activeElement !== document.getElementById("airlockLabel")) {
               document.getElementById("airlockLabel").value = (data.label || "").trim();
             }
+            // Grainfather
             document.getElementById("grainfatherEnabled").checked = data.grainfather_enabled === "true";
             document.getElementById("grainfatherUnit").value = (data.grainfather_unit === "fahrenheit") ? "fahrenheit" : "celsius";
-            const sg = data.grainfather_specific_gravity;
-            document.getElementById("grainfatherSG").value = (sg !== undefined && sg !== null && sg !== "") ? String(sg) : "1";
+            const gfSg = data.grainfather_specific_gravity;
+            document.getElementById("grainfatherSG").value = (gfSg !== undefined && gfSg !== null && gfSg !== "") ? String(gfSg) : "1";
             document.getElementById("grainfatherUrl").value = data.grainfather_url || "";
+            // Brewfather
+            document.getElementById("brewfatherEnabled").checked = data.brewfather_enabled === "true";
+            document.getElementById("brewfatherUnit").value = (data.brewfather_temp_unit === "fahrenheit") ? "fahrenheit" : "celsius";
+            const bfSg = data.brewfather_sg;
+            document.getElementById("brewfatherSG").value = (bfSg !== undefined && bfSg !== null && bfSg !== "") ? String(bfSg) : "1";
+            document.getElementById("brewfatherOG").value = data.brewfather_og || "";
+            document.getElementById("brewfatherBatchVolume").value = data.brewfather_batch_volume || "";
+            document.getElementById("brewfatherUrl").value = data.brewfather_url || "";
           })
           .catch(() => {});
       }
@@ -778,6 +849,12 @@
           document.getElementById("grainfatherUnit").value = "celsius";
           document.getElementById("grainfatherSG").value = "1";
           document.getElementById("grainfatherUrl").value = "";
+          document.getElementById("brewfatherEnabled").checked = false;
+          document.getElementById("brewfatherUnit").value = "celsius";
+          document.getElementById("brewfatherSG").value = "1";
+          document.getElementById("brewfatherOG").value = "";
+          document.getElementById("brewfatherBatchVolume").value = "";
+          document.getElementById("brewfatherUrl").value = "";
         }
       });
 
@@ -954,6 +1031,34 @@
           .then((data) => {
             if (data.status === "ok") {
               showToast("Grainfather settings saved", "success");
+            } else {
+              showToast(`Error: ${data.error}`, "danger");
+            }
+          })
+          .catch((err) => showToast(`Error: ${err.message}`, "danger"));
+      }
+
+      function sendBrewfatherSettings() {
+        const airlockId = airlockIdSelect.value;
+        if (!airlockId) {
+          showToast("Please select an airlock first", "warning");
+          return;
+        }
+        const enabled = document.getElementById("brewfatherEnabled").checked;
+        const unit = document.getElementById("brewfatherUnit").value;
+        const sg = document.getElementById("brewfatherSG").value.trim() || "1";
+        const og = document.getElementById("brewfatherOG").value.trim();
+        const batchVolume = document.getElementById("brewfatherBatchVolume").value.trim();
+        const url = document.getElementById("brewfatherUrl").value.trim();
+        fetch(`/api/airlocks/${airlockId}/brewfather`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled, unit, specific_gravity: sg, og: og || null, batch_volume: batchVolume || null, url }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "ok") {
+              showToast("Brewfather settings saved", "success");
             } else {
               showToast(`Error: ${data.error}`, "danger");
             }

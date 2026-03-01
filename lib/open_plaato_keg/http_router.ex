@@ -268,8 +268,9 @@ defmodule OpenPlaatoKeg.HttpRouter do
         AirlockData.publish(airlock_id, data)
         WebSocketHandler.publish_airlock(airlock_id, data)
 
-        # Send to Grainfather if enabled (throttled to every 15 min by Grainfather module)
+        # Send to Grainfather/Brewfather if enabled (throttled to every 15 min by each module)
         OpenPlaatoKeg.Grainfather.maybe_send(airlock_id, temperature, bubbles_per_min)
+        OpenPlaatoKeg.Brewfather.maybe_send(airlock_id, temperature, bubbles_per_min)
 
         response =
           %{status: "ok", command: "airlock_data"}
@@ -321,6 +322,46 @@ defmodule OpenPlaatoKeg.HttpRouter do
       grainfather_unit: unit,
       grainfather_specific_gravity: sg,
       grainfather_url: url
+    })
+  end
+
+  # Brewfather: enable/disable and options for sending this airlock's data to Brewfather custom stream (max every 15 min).
+  post "api/airlocks/:id/brewfather" do
+    airlock_id = conn.params["id"]
+    params = conn.body_params || %{}
+
+    enabled = params["enabled"] in [true, "true", "1"]
+    unit = case params["unit"] do
+      "fahrenheit" -> "fahrenheit"
+      _ -> "celsius"
+    end
+    sg = params["specific_gravity"] |> parse_airlock_value() |> Kernel.||("1.0")
+    og = params["og"] |> parse_airlock_value()
+    batch_volume = params["batch_volume"] |> parse_airlock_value()
+    url = (params["url"] || "") |> to_string() |> String.trim()
+
+    data =
+      [
+        {:brewfather_enabled, to_string(enabled)},
+        {:brewfather_temp_unit, unit},
+        {:brewfather_sg, sg},
+        {:brewfather_url, url}
+      ]
+      |> then(fn d -> if og, do: [{:brewfather_og, og} | d], else: d end)
+      |> then(fn d -> if batch_volume, do: [{:brewfather_batch_volume, batch_volume} | d], else: d end)
+
+    AirlockData.publish(airlock_id, data)
+    WebSocketHandler.publish_airlock(airlock_id, data)
+
+    json_response(conn, 200, %{
+      status: "ok",
+      command: "brewfather",
+      brewfather_enabled: enabled,
+      brewfather_temp_unit: unit,
+      brewfather_sg: sg,
+      brewfather_og: og,
+      brewfather_batch_volume: batch_volume,
+      brewfather_url: url
     })
   end
 
