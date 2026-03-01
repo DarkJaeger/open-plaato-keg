@@ -6,7 +6,15 @@
       "Bash(git push:*)",
       "Bash(mix compile:*)",
       "Bash(~/.asdf/shims/mix compile:*)",
-      "Bash(where mix:*)"
+      "Bash(where mix:*)",
+      "Bash(gh run:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(mix credo:*)",
+      "Bash(git:*)",
+      "Bash(gh release:*)",
+      "Bash(gh workflow:*)"
     ]
   }
 }
