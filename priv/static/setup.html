@@ -497,7 +497,7 @@
 
       function populateFormFields(data) {
         // Temperature offset - only update if not focused
-        if (data.temperature_offset) {
+        if (data.temperature_offset != null) {
           updateFieldIfNotFocused("tempOffset", data.temperature_offset);
         }
 

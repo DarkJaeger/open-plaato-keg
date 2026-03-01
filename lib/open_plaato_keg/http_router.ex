@@ -71,6 +71,9 @@ defmodule OpenPlaatoKeg.HttpRouter do
     keg_id = conn.params["id"]
     %{"value" => value} = conn.body_params
 
+    # Save to our local database so it persists across reconnects
+    KegData.publish(keg_id, [{:temperature_offset, value}])
+
     case KegCommander.set_temperature_offset(keg_id, value) do
       :ok ->
         json_response(conn, 200, %{status: "ok", command: "temperature_offset", value: value})
