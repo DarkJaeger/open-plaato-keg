@@ -99,6 +99,8 @@ defmodule OpenPlaatoKeg.Brewfather do
           body
         end
 
+      Logger.debug("Brewfather: payload #{inspect(body)}")
+
       case Req.post(url, json: body) do
         {:ok, %{status: status}} when status in 200..299 ->
           AirlockData.publish(airlock_id, [{:brewfather_last_sent_at, to_string(now_ms())}])
