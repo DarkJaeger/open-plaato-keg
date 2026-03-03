@@ -184,7 +184,7 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
       AirlockData.publish(id, airlock_fields)
       OpenPlaatoKeg.WebSocketHandler.publish_airlock(id, airlock_fields)
       OpenPlaatoKeg.Grainfather.maybe_send(id, Keyword.get(data, :airlock_temperature), bpm && to_string(bpm))
-      OpenPlaatoKeg.Brewfather.maybe_send(id, Keyword.get(data, :airlock_temperature), bpm && to_string(bpm))
+      OpenPlaatoKeg.Brewfather.maybe_send(id, Keyword.get(data, :airlock_temperature), bpm && to_string(bpm), new_state[:airlock_last_count])
     end
 
     {:noreply, new_state}
