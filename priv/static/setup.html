@@ -155,7 +155,7 @@
                     <input class="input" type="number" id="emptyKegWeight" placeholder="e.g., 4.0" step="0.1" min="0" />
                   </div>
                   <div class="control">
-                    <span class="button is-static">kg</span>
+                    <span class="button is-static" id="emptyKegWeightUnit">kg</span>
                   </div>
                   <div class="control">
                     <button class="button is-primary" onclick="sendEmptyKegWeight()">Set</button>
@@ -173,7 +173,7 @@
                     <input class="input" type="number" id="knownWeight" placeholder="e.g., 5.0" step="0.1" />
                   </div>
                   <div class="control">
-                    <span class="button is-static">kg</span>
+                    <span class="button is-static" id="knownWeightUnit">kg</span>
                   </div>
                   <div class="control">
                     <button class="button is-primary" onclick="sendKnownWeight()">Calibrate</button>
@@ -191,7 +191,7 @@
                     <input class="input" type="number" id="tempOffset" placeholder="e.g., -2.5" step="0.1" />
                   </div>
                   <div class="control">
-                    <span class="button is-static">°</span>
+                    <span class="button is-static" id="tempOffsetUnit">°C</span>
                   </div>
                   <div class="control">
                     <button class="button is-primary" onclick="sendTempOffset()">Set</button>
@@ -316,7 +316,7 @@
                     <input class="input" type="number" id="maxVolume" placeholder="e.g., 19.66" step="0.01" />
                   </div>
                   <div class="control">
-                    <span class="button is-static">L</span>
+                    <span class="button is-static" id="maxVolumeUnit">L</span>
                   </div>
                   <div class="control">
                     <button class="button is-primary" onclick="sendMaxVolume()">Set</button>
@@ -764,6 +764,8 @@
           document.getElementById("unitUS")?.classList.add("is-primary", "is-selected");
         }
 
+        updateUnitLabels(data.unit || "1");
+
         const beerLeftUnit = data.beer_left_unit;
 
         // Measure mode based on beer_left_unit: lbs/kg = Weight, gal/litre = Volume
@@ -1187,8 +1189,18 @@
 
       // ABV commands
       // Settings commands
+      function updateUnitLabels(unit) {
+        const isUS = unit === "2" || unit === "us";
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+        set("emptyKegWeightUnit", isUS ? "lbs" : "kg");
+        set("knownWeightUnit",    isUS ? "lbs" : "kg");
+        set("tempOffsetUnit",     isUS ? "°F"  : "°C");
+        set("maxVolumeUnit",      isUS ? "gal" : "L");
+      }
+
       function setUnit(value) {
         sendCommand("unit", { value });
+        updateUnitLabels(value);
       }
 
       function setMeasureUnit(value) {
