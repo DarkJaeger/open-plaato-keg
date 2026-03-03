@@ -482,12 +482,18 @@ body {
   width: 33.333%;
 }
 
+.column.is-half {
+  flex: none;
+  width: 50%;
+}
+
 @media screen and (max-width: 768px) {
   .columns {
     flex-direction: column;
   }
-  
-  .column.is-one-third {
+
+  .column.is-one-third,
+  .column.is-half {
     width: 100%;
   }
 }

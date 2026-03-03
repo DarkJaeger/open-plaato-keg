@@ -86,7 +86,7 @@
 
         function createKegCard(kegData) {
             const column = document.createElement('div');
-            column.classList.add('column', 'is-one-third'); // Responsive columns
+            column.classList.add('column', 'is-half');
 
             // Parse amount_left and keg_temperature as floats (they come as strings from the API)
             const amountLeft = parseFloat(kegData.amount_left) || 0;
