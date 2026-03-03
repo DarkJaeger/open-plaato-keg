@@ -136,6 +136,15 @@ defmodule OpenPlaatoKeg.HttpRouter do
     end
   end
 
+  post "api/kegs/:id/reset-last-pour" do
+    keg_id = conn.params["id"]
+
+    KegData.publish(keg_id, [{:last_pour, "0"}])
+    WebSocketHandler.publish(keg_id, [])
+
+    json_response(conn, 200, %{status: "ok", command: "reset_last_pour"})
+  end
+
   post "api/kegs/:id/empty-keg-weight" do
     keg_id = conn.params["id"]
     %{"value" => value} = conn.body_params
