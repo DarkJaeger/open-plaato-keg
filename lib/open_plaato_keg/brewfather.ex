@@ -53,8 +53,8 @@ defmodule OpenPlaatoKeg.Brewfather do
     batch_volume = parse_float(airlock[:brewfather_batch_volume], nil)
 
     label = (airlock[:label] || "") |> to_string() |> String.trim()
-    device_name = if label == "", do: "Plaato", else: label
-    temp_unit_str = if unit == "fahrenheit", do: "°F", else: "°C"
+    name = if label == "", do: "Plaato", else: label
+    temp_unit_str = if unit == "fahrenheit", do: "F", else: "C"
 
     temp_value =
       case temperature do
@@ -72,10 +72,11 @@ defmodule OpenPlaatoKeg.Brewfather do
       :skip
     else
       body = %{
+        "name" => name,
         "temp" => temp_value,
-        "sg" => sg,
         "temp_unit" => temp_unit_str,
-        "device_name" => device_name
+        "gravity" => sg,
+        "gravity_unit" => "G"
       }
 
       body =
@@ -83,10 +84,10 @@ defmodule OpenPlaatoKeg.Brewfather do
           nil -> body
           b when is_binary(b) ->
             case Float.parse(b) do
-              {n, _} -> Map.put(body, "bpm", round(n))
+              {n, _} -> Map.put(body, "bubbles", round(n))
               :error -> body
             end
-          b when is_number(b) -> Map.put(body, "bpm", round(b))
+          b when is_number(b) -> Map.put(body, "bubbles", round(b))
         end
 
       body = if og, do: Map.put(body, "og", og), else: body
