@@ -80,6 +80,37 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
       Keyword.has_key?(data, :firmware_version)
   end
 
+  # Valid pour range per unit. Lower bound catches near-zero scale noise;
+  # upper bound catches compressor/vibration spikes (e.g. 110 lbs from a fridge compressor).
+  # Equivalent to roughly 2 oz min – 48 oz max in all unit systems.
+  @pour_range %{
+    "lbs"   => {0.1,  3.0},
+    "kg"    => {0.05, 1.4},
+    "gal"   => {0.015, 0.375},
+    "litre" => {0.05, 1.4}
+  }
+
+  defp filter_last_pour(data, id) do
+    case Keyword.get(data, :last_pour) do
+      nil -> data
+      value ->
+        unit = KegData.get(id)[:beer_left_unit] || "litre"
+        {min, max} = Map.get(@pour_range, unit, {0.05, 1.4})
+
+        case Float.parse(to_string(value)) do
+          {v, _} when v >= min and v <= max ->
+            data
+
+          {v, _} ->
+            Logger.warning("Ignoring out-of-range last_pour=#{v} #{unit} for keg #{id}")
+            Keyword.delete(data, :last_pour)
+
+          :error ->
+            data
+        end
+    end
+  end
+
   defp process_keg(data, state) do
     id = state[:id]
     confirmed_keg? = state[:device_type] == :keg
@@ -90,6 +121,10 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
       if id && confirmed_keg?,
         do: Keyword.put_new(data, :id, id),
         else: data
+
+    # Drop out-of-range last_pour values caused by scale vibration/noise
+    # (e.g. compressor turning on). Valid pours are roughly 2–48 oz.
+    data_with_id = if id, do: filter_last_pour(data_with_id, id), else: data_with_id
 
     amount_left_changed? =
       Enum.any?(data, fn {key, _value} -> key == :amount_left end)
