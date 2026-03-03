@@ -147,6 +147,24 @@
             </div>
 
             <div class="field">
+              <label class="label">Empty Keg Weight</label>
+              <p class="help">Set empty keg reference weight directly</p>
+              <div class="control">
+                <div class="field has-addons">
+                  <div class="control is-expanded">
+                    <input class="input" type="number" id="emptyKegWeight" placeholder="e.g., 4.0" step="0.1" min="0" />
+                  </div>
+                  <div class="control">
+                    <span class="button is-static">kg</span>
+                  </div>
+                  <div class="control">
+                    <button class="button is-primary" onclick="sendEmptyKegWeight()">Set</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="field">
               <label class="label">Calibrate with Known Weight</label>
               <p class="help">Place a known weight on the scale for calibration</p>
               <div class="control">
@@ -563,6 +581,10 @@
           updateFieldIfNotFocused("tempOffset", data.temperature_offset);
         }
 
+        if (data.empty_keg_weight != null) {
+          updateFieldIfNotFocused("emptyKegWeight", data.empty_keg_weight);
+        }
+
         // Max keg volume - only update if not focused
         if (data.max_keg_volume) {
           updateFieldIfNotFocused("maxVolume", data.max_keg_volume);
@@ -972,6 +994,12 @@
         const value = document.getElementById("tempOffset").value;
         if (!value) { showToast("Please enter a temperature offset", "warning"); return; }
         sendCommand("temperature-offset", { value });
+      }
+
+      function sendEmptyKegWeight() {
+        const value = document.getElementById("emptyKegWeight").value;
+        if (!value) { showToast("Please enter a weight value", "warning"); return; }
+        sendCommand("empty-keg-weight", { value });
       }
 
       // Volume commands

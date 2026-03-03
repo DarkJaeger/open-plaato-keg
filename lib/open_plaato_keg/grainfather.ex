@@ -48,6 +48,7 @@ defmodule OpenPlaatoKeg.Grainfather do
   end
 
   defp do_send(airlock_id, airlock, url, temperature, bubbles_per_min) do
+    bubbles_per_min = bubbles_per_min || airlock[:bubbles_per_min]
     unit = airlock[:grainfather_unit] || "celsius"
     sg = parse_specific_gravity(airlock[:grainfather_specific_gravity])
 

@@ -136,6 +136,21 @@ defmodule OpenPlaatoKeg.HttpRouter do
     end
   end
 
+  post "api/kegs/:id/empty-keg-weight" do
+    keg_id = conn.params["id"]
+    %{"value" => value} = conn.body_params
+
+    KegData.publish(keg_id, [{:empty_keg_weight, value}])
+
+    case KegCommander.set_empty_keg_weight_value(keg_id, value) do
+      :ok ->
+        json_response(conn, 200, %{status: "ok", command: "empty_keg_weight", value: value})
+
+      {:error, reason} ->
+        json_response(conn, 503, %{error: reason})
+    end
+  end
+
   post "api/kegs/:id/max-keg-volume" do
     keg_id = conn.params["id"]
     %{"value" => value} = conn.body_params
@@ -373,14 +388,32 @@ defmodule OpenPlaatoKeg.HttpRouter do
     keg_id = conn.params["id"]
     %{"value" => value} = conn.body_params
 
-    result =
+    unit_pin =
       case value do
-        "metric" -> KegCommander.set_unit_metric(keg_id)
-        "1" -> KegCommander.set_unit_metric(keg_id)
-        "us" -> KegCommander.set_unit_us(keg_id)
-        "2" -> KegCommander.set_unit_us(keg_id)
-        _ -> {:error, :invalid_value}
+        v when v in ["metric", "1"] -> "1"
+        v when v in ["us", "2"] -> "2"
+        _ -> nil
       end
+
+    result =
+      case unit_pin do
+        "1" -> KegCommander.set_unit_metric(keg_id)
+        "2" -> KegCommander.set_unit_us(keg_id)
+        nil -> {:error, :invalid_value}
+      end
+
+    if unit_pin do
+      current = KegData.get(keg_id)
+      measure_unit = current[:measure_unit] || "2"
+
+      KegData.publish(keg_id, [
+        {:unit, unit_pin},
+        {:beer_left_unit, derive_beer_left_unit(unit_pin, measure_unit)},
+        {:temperature_unit, derive_temperature_unit(unit_pin)}
+      ])
+
+      WebSocketHandler.publish(keg_id, [])
+    end
 
     case result do
       :ok -> json_response(conn, 200, %{status: "ok", command: "unit", value: value})
@@ -392,14 +425,31 @@ defmodule OpenPlaatoKeg.HttpRouter do
     keg_id = conn.params["id"]
     %{"value" => value} = conn.body_params
 
-    result =
+    measure_pin =
       case value do
-        "weight" -> KegCommander.set_measure_unit_weight(keg_id)
-        "1" -> KegCommander.set_measure_unit_weight(keg_id)
-        "volume" -> KegCommander.set_measure_unit_volume(keg_id)
-        "2" -> KegCommander.set_measure_unit_volume(keg_id)
-        _ -> {:error, :invalid_value}
+        v when v in ["weight", "1"] -> "1"
+        v when v in ["volume", "2"] -> "2"
+        _ -> nil
       end
+
+    result =
+      case measure_pin do
+        "1" -> KegCommander.set_measure_unit_weight(keg_id)
+        "2" -> KegCommander.set_measure_unit_volume(keg_id)
+        nil -> {:error, :invalid_value}
+      end
+
+    if measure_pin do
+      current = KegData.get(keg_id)
+      unit = current[:unit] || "1"
+
+      KegData.publish(keg_id, [
+        {:measure_unit, measure_pin},
+        {:beer_left_unit, derive_beer_left_unit(unit, measure_pin)}
+      ])
+
+      WebSocketHandler.publish(keg_id, [])
+    end
 
     case result do
       :ok -> json_response(conn, 200, %{status: "ok", command: "measure_unit", value: value})
@@ -495,4 +545,14 @@ defmodule OpenPlaatoKeg.HttpRouter do
 
   defp maybe_put_response(map, _key, nil), do: map
   defp maybe_put_response(map, key, value), do: Map.put(map, key, value)
+
+  # unit pin "1" = metric, "2" = US; measure_unit pin "1" = weight, "2" = volume
+  defp derive_beer_left_unit("1", "1"), do: "kg"
+  defp derive_beer_left_unit("1", _),   do: "litre"
+  defp derive_beer_left_unit("2", "1"), do: "lbs"
+  defp derive_beer_left_unit("2", _),   do: "gal"
+  defp derive_beer_left_unit(_, _),     do: "litre"
+
+  defp derive_temperature_unit("2"), do: "°F"
+  defp derive_temperature_unit(_),   do: "°C"
 end

@@ -46,6 +46,7 @@ defmodule OpenPlaatoKeg.Brewfather do
   defp now_ms, do: System.system_time(:millisecond)
 
   defp do_send(airlock_id, airlock, url, temperature, bubbles_per_min) do
+    bubbles_per_min = bubbles_per_min || airlock[:bubbles_per_min]
     unit = airlock[:brewfather_temp_unit] || "celsius"
     sg = parse_float(airlock[:brewfather_sg], 1.0)
     og = parse_float(airlock[:brewfather_og], nil)
