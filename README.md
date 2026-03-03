@@ -36,6 +36,7 @@ graph LR
     B --> E[MQTT];
     B --> F[BarHelper];
     B --> H[Grainfather];
+    B --> I[Brewfather];
 ```
 
 ## Setup
@@ -207,6 +208,7 @@ If Docker isn't your preferred method, you can create an [Elixir Release](https:
         "buff-in": "1024"
       },
       "id": "00000000000000000000000000000001",
+      "my_label": "Basement Tap",
       "my_beer_style": "IPA",
       "my_keg_date": "12.01.2025",
       "my_og": "1.050",
@@ -237,13 +239,14 @@ Both modes can be enabled simultaneously.
 ### `/index.html`
 
 * Displays keg and airlock cards in real time with WebSocket updates
-* Keg cards show beer style, keg date, temperature, pouring status, and remaining volume
+* Keg cards show: keg label, beer style, keg date, ABV, temperature, pouring status, last pour (converted to oz/ml/g), and remaining volume
+* Keg cards are displayed two-per-row for a wider, easier-to-read layout
 * Airlock cards show temperature and bubbles per minute (BPM)
 
 ### `/setup.html`
 
-* **Kegs tab**: Configure and control your kegs — set units, calibration, beer information, and view system status; send commands directly to connected kegs
-* **Airlocks tab**: Set a label for each airlock (e.g. "Primary", "Secondary") and configure Grainfather integration (URL, temperature unit, specific gravity)
+* **Kegs tab**: Configure and control your kegs — set units (metric/imperial with dynamic unit labels), calibration, empty keg weight, beer information, keg label, and view system status; send commands directly to connected kegs
+* **Airlocks tab**: Set a label for each airlock (e.g. "Primary", "Secondary") and configure Grainfather and Brewfather integration
 
 ### HTTP REST API
 
@@ -321,6 +324,7 @@ Both modes can be enabled simultaneously.
     * `min_temperature` / `max_temperature`: Temperature alert thresholds
     * `og` / `fg`: Original and final gravity values (from hardware)
     * `internal`: System info object (dev, ver, fw, build, tmpl, h-beat, buff-in)
+    * `my_label`: User-defined friendly keg name, shown on the dashboard (stored locally)
     * `my_beer_style`: User-defined beer style (stored locally)
     * `my_keg_date`: User-defined keg date (stored locally)
     * `my_og`: User-defined original gravity in format 1.xxx (stored locally)
@@ -403,15 +407,17 @@ Send commands to a connected keg:
 |---|---|---|
 | `POST /api/kegs/:id/tare` | — | Tare the scale |
 | `POST /api/kegs/:id/tare-release` | — | Release tare |
-| `POST /api/kegs/:id/empty-keg` | — | Set empty keg weight |
+| `POST /api/kegs/:id/empty-keg` | — | Store current scale reading as empty keg reference |
 | `POST /api/kegs/:id/empty-keg-release` | — | Release empty keg |
+| `POST /api/kegs/:id/empty-keg-weight` | `{"value": 4.0}` | Set empty keg reference weight directly (kg or lbs) |
 | `POST /api/kegs/:id/max-keg-volume` | `{"value": 19.5}` | Set max keg volume |
-| `POST /api/kegs/:id/temperature-offset` | `{"value": -2.5}` | Adjust temperature calibration |
+| `POST /api/kegs/:id/temperature-offset` | `{"value": -2.5}` | Adjust temperature calibration offset |
 | `POST /api/kegs/:id/calibrate-known-weight` | `{"value": 5000}` | Calibrate with known weight (grams) |
-| `POST /api/kegs/:id/unit` | `{"value": "metric"\|"us"}` | Set unit system |
-| `POST /api/kegs/:id/measure-unit` | `{"value": "weight"\|"volume"}` | Set measure mode |
+| `POST /api/kegs/:id/unit` | `{"value": "metric"\|"us"}` | Set unit system (immediately updates display units) |
+| `POST /api/kegs/:id/measure-unit` | `{"value": "weight"\|"volume"}` | Set measure mode (immediately updates display units) |
 | `POST /api/kegs/:id/keg-mode` | `{"value": "beer"\|"co2"}` | Set keg mode *(experimental)* |
 | `POST /api/kegs/:id/sensitivity` | `{"value": "low"\|"medium"\|"high"\|"very_low"}` | Set pour detection sensitivity |
+| `POST /api/kegs/:id/label` | `{"value": "Basement Tap"}` | Set friendly keg label (stored locally) |
 | `POST /api/kegs/:id/beer-style` | `{"value": "IPA"}` | Set beer style (stored locally + sent to keg) |
 | `POST /api/kegs/:id/date` | `{"value": "01.01.2025"}` | Set keg date (stored locally + sent to keg) |
 | `POST /api/kegs/:id/og` | `{"value": "1.050"}` | Set original gravity (stored locally) |
