@@ -1,4 +1,4 @@
-<a href="https://www.buymeacoffee.com/LocutusOFB"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=LocutusOFB&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" /></a>
+<a href="https://www.buymeacoffee.com/LocutusOFB"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 ## What is Open Plaato Keg?
 
 Take control of your Plaato Keg and Plaato Airlock! This reverse-engineered solution bypasses the Plaato cloud, keeping your device data local and accessible even after the cloud service is discontinued.
