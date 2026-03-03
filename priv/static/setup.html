@@ -205,6 +205,21 @@
           <div class="box section-box">
             <h2 class="title is-4">Beer Information</h2>
 
+            <div class="field">
+              <label class="label">Keg Label <span style="color: #ff3860;">*</span></label>
+              <p class="help">Friendly name shown on the dashboard (e.g. "Basement Tap", "Fridge #1")</p>
+              <div class="control">
+                <div class="field has-addons">
+                  <div class="control is-expanded">
+                    <input class="input" type="text" id="kegLabel" placeholder="e.g., Basement Tap" />
+                  </div>
+                  <div class="control">
+                    <button class="button is-primary" onclick="sendKegLabel()">Set</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="columns">
               <div class="column">
                 <div class="field">
@@ -588,6 +603,10 @@
         // Max keg volume - only update if not focused
         if (data.max_keg_volume) {
           updateFieldIfNotFocused("maxVolume", data.max_keg_volume);
+        }
+
+        if (data.my_label != null) {
+          updateFieldIfNotFocused("kegLabel", data.my_label.trim());
         }
 
         // Beer style (stored locally as my_beer_style) - only update if not focused
@@ -1010,6 +1029,11 @@
       }
 
       // Beer info commands
+      function sendKegLabel() {
+        const value = document.getElementById("kegLabel").value;
+        sendCommand("label", { value });
+      }
+
       function sendBeerStyle() {
         const value = document.getElementById("beerStyle").value;
         if (!value) { showToast("Please enter a beer style", "warning"); return; }

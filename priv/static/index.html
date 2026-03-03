@@ -93,14 +93,20 @@
             const maxVolume = parseFloat(kegData.max_keg_volume) || 0;
             const temperature = parseFloat(kegData.keg_temperature);
             const percentLeft = parseFloat(kegData.percent_of_beer_left) || 0;
-            const rawUnit = kegData.beer_left_unit || 'L';
+            const rawUnit = kegData.beer_left_unit || 'litre';
             const volumeUnit = rawUnit === 'litre' ? 'L' : rawUnit;
             const tempUnit = kegData.temperature_unit || '°C';
 
             const lastPour = parseFloat(kegData.last_pour) || 0;
             const isPouring = kegData.is_pouring && kegData.is_pouring !== "0";
 
+            // last_pour arrives in the same unit as amount_left; convert to a pour-friendly unit
+            const pourConversions = { lbs: [16, 'oz'], kg: [1000, 'g'], gal: [128, 'oz'], litre: [1000, 'ml'] };
+            const [pourMult, pourUnit] = pourConversions[rawUnit] || [1, volumeUnit];
+            const pourValue = lastPour * pourMult;
+
             // Build card title from beer style, keg date, and ABV (stored locally as my_beer_style, my_keg_date, my_abv)
+            const label = kegData.my_label?.trim();
             const beerStyle = kegData.my_beer_style?.trim();
             const kegDate = kegData.my_keg_date?.trim();
             const abv = kegData.my_abv?.trim();
@@ -121,12 +127,13 @@
                 <div class="card" data-keg-id="${kegData.id}">
                     <span class="temperature-badge">${!isNaN(temperature) ? temperature.toFixed(1) : '--'}${tempUnit}</span>
                     <span class="pouring-indicator ${isPouring ? 'is-pouring' : ''}" title="${isPouring ? 'POURING' : ''}"></span>
-                    ${lastPour > 0 ? `<span class="last-pour-badge">LAST POUR: ${lastPour.toFixed(2)} ${volumeUnit}</span>` : ''}
+                    ${lastPour > 0 ? `<span class="last-pour-badge">LAST POUR: ${Math.round(pourValue)} ${pourUnit}</span>` : ''}
                     <span class="remaining-badge">REMAINING: ${percentLeft.toFixed(1)}%</span>
                     <div class="card-content">
                         <div class="media">
                             <div class="media-content">
-                                ${cardTitle ? `<p class="title is-5">${cardTitle}</p>` : ''}
+                                ${label ? `<p class="title is-5">${escapeHtml(label)}</p>` : ''}
+                                ${cardTitle ? `<p class="subtitle is-6">${cardTitle}</p>` : ''}
                                 <p class="subtitle is-1">${amountLeft.toFixed(2)} ${volumeUnit}</p>
                             </div>
                         </div>

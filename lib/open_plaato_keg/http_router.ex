@@ -161,6 +161,16 @@ defmodule OpenPlaatoKeg.HttpRouter do
     end
   end
 
+  post "api/kegs/:id/label" do
+    keg_id = conn.params["id"]
+    value = (conn.body_params || %{})["value"] |> Kernel.to_string() |> String.trim()
+
+    KegData.publish(keg_id, [{:my_label, value}])
+    WebSocketHandler.publish(keg_id, [])
+
+    json_response(conn, 200, %{status: "ok", command: "label", value: value})
+  end
+
   # ============================================
   # Monitor Commands
   # ============================================
