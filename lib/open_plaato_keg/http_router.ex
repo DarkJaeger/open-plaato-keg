@@ -256,7 +256,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
 
   # ============================================
   # Delete a keg and all its stored data from DETS (e.g. decommissioned or phantom kegs).
-  delete "api/kegs/:id" do
+  post "api/kegs/:id/delete" do
     keg_id = conn.params["id"]
     KegData.delete(keg_id)
     Logger.info("Deleted keg #{keg_id} from DETS")

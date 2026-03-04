@@ -31,6 +31,10 @@ defmodule OpenPlaatoKeg.Models.KegData do
   end
 
   def delete(id) do
-    :dets.match_delete(:keg_data, {{id, :_}, :_})
+    # Find all keys stored for this id, then delete each record individually.
+    :keg_data
+    |> :dets.match({{id, :"$1"}, :_})
+    |> List.flatten()
+    |> Enum.each(fn key -> :dets.delete(:keg_data, {id, key}) end)
   end
 end
