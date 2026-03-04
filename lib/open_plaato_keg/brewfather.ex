@@ -89,7 +89,9 @@ defmodule OpenPlaatoKeg.Brewfather do
           b when is_number(b) -> Map.put(body, "bpm", round(b))
         end
 
-      body = if bubble_count != nil, do: Map.put(body, "bubbles", bubble_count), else: body
+      body = if is_integer(bubble_count) and bubble_count > 0,
+               do: Map.put(body, "bubbles", bubble_count),
+               else: body
 
       body = if og, do: Map.put(body, "og", og), else: body
 
