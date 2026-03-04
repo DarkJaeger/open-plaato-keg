@@ -89,26 +89,11 @@ defmodule OpenPlaatoKeg.Brewfather do
           b when is_number(b) -> Map.put(body, "bpm", round(b))
         end
 
-      body =
-        if is_integer(bubble_total) and bubble_total > 0 do
-          co2_volume = Float.round(bubble_total * 0.000665, 6)
-
-          body
-          |> Map.put("bubbles", bubble_total)
-          |> Map.put("co2_volume", co2_volume)
-        else
-          body
-        end
+      # bubbles, co2_volume, and abv are withheld until Brewfather patches
+      # their server-side handling of small bubble counts. The lifetime total
+      # is still tracked in DETS and will be sent once the fix is deployed.
 
       body = if og, do: Map.put(body, "og", og), else: body
-
-      body =
-        if og do
-          abv = Float.round((og - sg) * 131.25, 4)
-          Map.put(body, "abv", abv)
-        else
-          body
-        end
 
       body =
         if batch_volume do
