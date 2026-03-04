@@ -29,4 +29,8 @@ defmodule OpenPlaatoKeg.Models.KegData do
       :dets.insert(:keg_data, {{id, key}, value})
     end)
   end
+
+  def delete(id) do
+    :dets.match_delete(:keg_data, {{id, :_}, :_})
+  end
 end
