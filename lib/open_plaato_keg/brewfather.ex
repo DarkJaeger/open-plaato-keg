@@ -8,7 +8,7 @@ defmodule OpenPlaatoKeg.Brewfather do
 
   @throttle_minutes 15
 
-  def maybe_send(airlock_id, temperature, bubbles_per_min, bubble_count \\ nil) do
+  def maybe_send(airlock_id, temperature, bubbles_per_min, bubble_total \\ nil) do
     airlock = AirlockData.get(airlock_id)
 
     enabled? =
@@ -22,7 +22,7 @@ defmodule OpenPlaatoKeg.Brewfather do
 
     if enabled? and url != "" do
       if throttle_ok?(airlock) do
-        do_send(airlock_id, airlock, url, temperature, bubbles_per_min, bubble_count)
+        do_send(airlock_id, airlock, url, temperature, bubbles_per_min, bubble_total)
       else
         :throttled
       end
@@ -45,7 +45,7 @@ defmodule OpenPlaatoKeg.Brewfather do
 
   defp now_ms, do: System.system_time(:millisecond)
 
-  defp do_send(airlock_id, airlock, url, temperature, bubbles_per_min, bubble_count) do
+  defp do_send(airlock_id, airlock, url, temperature, bubbles_per_min, bubble_total) do
     bubbles_per_min = bubbles_per_min || airlock[:bubbles_per_min]
     unit = airlock[:brewfather_temp_unit] || "celsius"
     sg = parse_float(airlock[:brewfather_sg], 1.0)
@@ -89,11 +89,26 @@ defmodule OpenPlaatoKeg.Brewfather do
           b when is_number(b) -> Map.put(body, "bpm", round(b))
         end
 
-      body = if is_integer(bubble_count) and bubble_count > 0,
-               do: Map.put(body, "bubbles", bubble_count),
-               else: body
+      body =
+        if is_integer(bubble_total) and bubble_total > 0 do
+          co2_volume = Float.round(bubble_total * 0.000665, 6)
+
+          body
+          |> Map.put("bubbles", bubble_total)
+          |> Map.put("co2_volume", co2_volume)
+        else
+          body
+        end
 
       body = if og, do: Map.put(body, "og", og), else: body
+
+      body =
+        if og do
+          abv = Float.round((og - sg) * 131.25, 4)
+          Map.put(body, "abv", abv)
+        else
+          body
+        end
 
       body =
         if batch_volume do

@@ -158,6 +158,7 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
         state
         |> seed_integer(:airlock_last_count, persisted[:last_bubble_count])
         |> seed_integer(:airlock_last_count_time, persisted[:last_bubble_count_time])
+        |> seed_integer(:total_bubble_count, persisted[:total_bubble_count])
       else
         state
       end
@@ -166,11 +167,16 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     {bpm, new_state} =
       maybe_compute_bpm(Keyword.get(data, :airlock_bubble_count), state)
 
-    # Persist the updated count/time so the next wake-up connection can use it.
+    # Accumulate lifetime bubble total across connections.
+    # Hardware resets its count each power-on, so we track the delta each packet.
+    {new_state, bubble_total} = accumulate_bubble_total(new_state, state[:airlock_last_count])
+
+    # Persist the updated count/time/total so the next wake-up connection can use it.
     if id != nil and new_state[:airlock_last_count] != state[:airlock_last_count] do
       AirlockData.publish(id, [
         {:last_bubble_count, to_string(new_state[:airlock_last_count])},
-        {:last_bubble_count_time, to_string(new_state[:airlock_last_count_time])}
+        {:last_bubble_count_time, to_string(new_state[:airlock_last_count_time])},
+        {:total_bubble_count, to_string(bubble_total || 0)}
       ])
     end
 
@@ -184,10 +190,30 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
       AirlockData.publish(id, airlock_fields)
       OpenPlaatoKeg.WebSocketHandler.publish_airlock(id, airlock_fields)
       OpenPlaatoKeg.Grainfather.maybe_send(id, Keyword.get(data, :airlock_temperature), bpm && to_string(bpm))
-      OpenPlaatoKeg.Brewfather.maybe_send(id, Keyword.get(data, :airlock_temperature), bpm && to_string(bpm), new_state[:airlock_last_count])
+      OpenPlaatoKeg.Brewfather.maybe_send(id, Keyword.get(data, :airlock_temperature), bpm && to_string(bpm), bubble_total)
     end
 
     {:noreply, new_state}
+  end
+
+  # Computes the delta from the previous count and adds it to the lifetime total.
+  # When the hardware resets (new_count < prev_count), the new_count itself is the delta.
+  defp accumulate_bubble_total(state, prev_count) do
+    new_count = state[:airlock_last_count]
+
+    if new_count == nil or new_count == prev_count do
+      {state, state[:total_bubble_count]}
+    else
+      delta =
+        cond do
+          prev_count == nil -> new_count
+          new_count >= prev_count -> new_count - prev_count
+          true -> new_count
+        end
+
+      new_total = (state[:total_bubble_count] || 0) + delta
+      {Map.put(state, :total_bubble_count, new_total), new_total}
+    end
   end
 
   defp seed_integer(state, _key, nil), do: state
