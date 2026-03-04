@@ -235,11 +235,21 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
         prev_time = state[:airlock_last_count_time]
 
         bpm =
-          if prev_count != nil and prev_time != nil and new_count >= prev_count do
+          if prev_count != nil and prev_time != nil do
             elapsed_min = (now - prev_time) / 60_000.0
             # Require at least 60 seconds between readings to prevent inflated
             # BPM from burst packets sent within a single wake-up cycle.
-            if elapsed_min >= 1.0, do: Float.round((new_count - prev_count) / elapsed_min, 1)
+            if elapsed_min >= 1.0 do
+              # Hardware resets V100 to 0 on each wake-up (new TCP connection).
+              # When new_count < prev_count a reset is detected: use prev_count
+              # as the delta (bubbles from the previous cycle) over elapsed time.
+              delta =
+                if new_count >= prev_count,
+                  do: new_count - prev_count,
+                  else: prev_count
+
+              Float.round(delta / elapsed_min, 1)
+            end
           end
 
         new_state =
