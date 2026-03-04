@@ -129,12 +129,12 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     amount_left_changed? =
       Enum.any?(data, fn {key, _value} -> key == :amount_left end)
 
-    # WebSocket/MQTT/BarHelper are only fired for confirmed kegs — this prevents
-    # phantom keg cards appearing when an airlock's internal packet arrives before
-    # its V99/V100/V101 pins (which is what sets device_type to :airlock).
+    # All publishers are guarded by confirmed_keg? to prevent phantom keg entries
+    # when an airlock's internal packet arrives before its V99/V100/V101 pins
+    # (which is what sets device_type to :airlock).
     publish(id, data_with_id, [
-      {&KegData.publish/2, fn -> true end},
-      {&OpenPlaatoKeg.Metrics.publish/2, fn -> true end},
+      {&KegData.publish/2, fn -> confirmed_keg? end},
+      {&OpenPlaatoKeg.Metrics.publish/2, fn -> confirmed_keg? end},
       {&OpenPlaatoKeg.WebSocketHandler.publish/2, fn -> confirmed_keg? end},
       {&OpenPlaatoKeg.MqttHandler.publish/2,
        fn -> confirmed_keg? and OpenPlaatoKeg.mqtt_config()[:enabled] end},
