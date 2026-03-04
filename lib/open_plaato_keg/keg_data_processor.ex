@@ -237,7 +237,9 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
         bpm =
           if prev_count != nil and prev_time != nil and new_count >= prev_count do
             elapsed_min = (now - prev_time) / 60_000.0
-            if elapsed_min > 0, do: Float.round((new_count - prev_count) / elapsed_min, 1)
+            # Require at least 60 seconds between readings to prevent inflated
+            # BPM from burst packets sent within a single wake-up cycle.
+            if elapsed_min >= 1.0, do: Float.round((new_count - prev_count) / elapsed_min, 1)
           end
 
         new_state =
