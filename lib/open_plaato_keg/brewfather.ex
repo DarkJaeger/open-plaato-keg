@@ -104,7 +104,7 @@ defmodule OpenPlaatoKeg.Brewfather do
           body
         end
 
-      Logger.debug("Brewfather: payload #{inspect(body)}")
+      Logger.info("Brewfather: payload #{inspect(body)}")
 
       case Req.post(url, json: body) do
         {:ok, %{status: status}} when status in 200..299 ->
