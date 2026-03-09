@@ -27,7 +27,19 @@ defmodule OpenPlaatoKeg do
         {:file, String.to_charlist(airlock_path)}
       ])
 
+    # Beer DB: tap list configuration and tap handle metadata
+    beer_db_path = Path.join(db_folder, "beer_db.bin")
+    {:ok, _beer_table} = :dets.open_file(:beer_db, [{:file, String.to_charlist(beer_db_path)}])
+
+    # Ensure tap handle image directory exists (persistent volume)
+    File.mkdir_p!(Path.join(db_folder, "tap-handles"))
+
     OpenPlaatoKeg.AppConfig.load()
+  end
+
+  def tap_handle_dir do
+    db_file = Application.get_env(:open_plaato_keg, :db)[:file_path]
+    Path.join(Path.dirname(db_file), "tap-handles")
   end
 
   def tcp_listener_config do

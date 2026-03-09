@@ -3,6 +3,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
   alias OpenPlaatoKeg.KegCommander
   alias OpenPlaatoKeg.Metrics
   alias OpenPlaatoKeg.Models.AirlockData
+  alias OpenPlaatoKeg.Models.BeerDB
   alias OpenPlaatoKeg.Models.KegData
   alias OpenPlaatoKeg.MqttHandler
   alias OpenPlaatoKeg.WebSocketHandler
@@ -13,9 +14,10 @@ defmodule OpenPlaatoKeg.HttpRouter do
   )
 
   plug(Plug.Parsers,
-    parsers: [:urlencoded, :json],
-    pass: ["application/json"],
-    json_decoder: Poison
+    parsers: [:urlencoded, :json, :multipart],
+    pass: ["*/*"],
+    json_decoder: Poison,
+    length: 10_000_000
   )
 
   plug(:match)
@@ -546,6 +548,120 @@ defmodule OpenPlaatoKeg.HttpRouter do
   end
 
   # ============================================
+  # Tap List (beer.db)
+  # ============================================
+
+  get "api/taps" do
+    json_response(conn, 200, BeerDB.all_taps())
+  end
+
+  get "api/taps/:id" do
+    case BeerDB.get_tap(conn.params["id"]) do
+      nil -> json_response(conn, 404, %{error: "not_found"})
+      tap -> json_response(conn, 200, tap)
+    end
+  end
+
+  post "api/taps/:id" do
+    id = conn.params["id"]
+    p = conn.body_params || %{}
+
+    data = %{
+      tap_number: parse_int_or_nil(p["tap_number"]),
+      name: to_string(p["name"] || ""),
+      brewery: to_string(p["brewery"] || ""),
+      style: to_string(p["style"] || ""),
+      abv: to_string(p["abv"] || ""),
+      ibu: to_string(p["ibu"] || ""),
+      color: to_string(p["color"] || "#c9a849"),
+      description: to_string(p["description"] || ""),
+      tasting_notes: to_string(p["tasting_notes"] || ""),
+      keg_id: nilify_empty(p["keg_id"]),
+      handle_image: nilify_empty(p["handle_image"])
+    }
+
+    BeerDB.put_tap(id, data)
+    json_response(conn, 200, %{status: "ok", id: id})
+  end
+
+  post "api/taps/:id/delete" do
+    BeerDB.delete_tap(conn.params["id"])
+    json_response(conn, 200, %{status: "ok"})
+  end
+
+  # ============================================
+  # Tap Handle Images
+  # ============================================
+
+  get "api/tap-handles" do
+    json_response(conn, 200, BeerDB.all_handles())
+  end
+
+  # Serve uploaded handle images from the persistent data directory
+  get "uploads/tap-handles/:filename" do
+    filename = conn.params["filename"]
+
+    if Regex.match?(~r/^[a-zA-Z0-9_\-]+\.jpg$/i, filename) do
+      path = Path.join(OpenPlaatoKeg.tap_handle_dir(), filename)
+
+      if File.exists?(path) do
+        conn
+        |> put_resp_content_type("image/jpeg")
+        |> send_resp(200, File.read!(path))
+      else
+        json_response(conn, 404, %{error: "not_found"})
+      end
+    else
+      json_response(conn, 400, %{error: "invalid_filename"})
+    end
+  end
+
+  post "api/tap-handles/upload" do
+    case conn.params["image"] do
+      %Plug.Upload{filename: original_name, path: temp_path} ->
+        fname_lower = String.downcase(original_name)
+
+        cond do
+          not String.ends_with?(fname_lower, ".jpg") ->
+            json_response(conn, 400, %{error: "Only .jpg files are allowed"})
+
+          true ->
+            content = File.read!(temp_path)
+
+            case jpeg_dimensions(content) do
+              {200, 200} ->
+                safe_name = sanitize_filename(fname_lower)
+                dest = Path.join(OpenPlaatoKeg.tap_handle_dir(), safe_name)
+                File.cp!(temp_path, dest)
+                BeerDB.put_handle(safe_name, %{uploaded_at: DateTime.utc_now() |> to_string()})
+                json_response(conn, 200, %{status: "ok", filename: safe_name})
+
+              {w, h} ->
+                json_response(conn, 400, %{error: "Image must be exactly 200×200 px (got #{w}×#{h})"})
+
+              nil ->
+                json_response(conn, 400, %{error: "Could not read JPEG dimensions — ensure file is a valid JPEG"})
+            end
+        end
+
+      _ ->
+        json_response(conn, 400, %{error: "No image file provided (field name must be 'image')"})
+    end
+  end
+
+  post "api/tap-handles/:filename/delete" do
+    filename = conn.params["filename"]
+
+    if Regex.match?(~r/^[a-zA-Z0-9_\-]+\.jpg$/i, filename) do
+      File.rm(Path.join(OpenPlaatoKeg.tap_handle_dir(), filename))
+      BeerDB.delete_handle(filename)
+      json_response(conn, 200, %{status: "ok"})
+    else
+      json_response(conn, 400, %{error: "invalid_filename"})
+    end
+  end
+
+  # ============================================
   # Other Endpoints
   # ============================================
 
@@ -604,4 +720,46 @@ defmodule OpenPlaatoKeg.HttpRouter do
 
   defp derive_temperature_unit("2"), do: "°F"
   defp derive_temperature_unit(_),   do: "°C"
+
+  defp parse_int_or_nil(nil), do: nil
+  defp parse_int_or_nil(v) do
+    case Integer.parse(to_string(v)) do
+      {i, _} -> i
+      :error -> nil
+    end
+  end
+
+  defp nilify_empty(nil), do: nil
+  defp nilify_empty(""), do: nil
+  defp nilify_empty(v), do: to_string(v)
+
+  defp sanitize_filename(name) do
+    name
+    |> String.replace(~r/[^a-z0-9_\-\.]/, "_")
+    |> String.replace(~r/_+/, "_")
+  end
+
+  # Parse JPEG image dimensions from raw binary data.
+  # Returns {width, height} or nil if not a valid JPEG or SOF not found.
+  defp jpeg_dimensions(<<0xFF, 0xD8, rest::binary>>), do: find_jpeg_sof(rest)
+  defp jpeg_dimensions(_), do: nil
+
+  @sof_markers [0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF]
+
+  # SOF marker: precision(1) height(2) width(2)
+  defp find_jpeg_sof(<<0xFF, m, _size::big-16, _prec, h::big-16, w::big-16, _::binary>>)
+       when m in @sof_markers,
+       do: {w, h}
+
+  # Non-SOF segment: skip payload and recurse
+  defp find_jpeg_sof(<<0xFF, _m, size::big-16, rest::binary>>) when size >= 2 do
+    skip = size - 2
+
+    if byte_size(rest) >= skip do
+      <<_::binary-size(skip), next::binary>> = rest
+      find_jpeg_sof(next)
+    end
+  end
+
+  defp find_jpeg_sof(_), do: nil
 end
