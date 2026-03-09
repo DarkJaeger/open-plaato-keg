@@ -54,9 +54,14 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
         {:noreply, state}
 
       state[:device_type] == :airlock ->
-        Logger.debug("Decoded airlock data", data: inspect(payload, limit: :infinity))
-        # Drop internal metadata — not stored for airlocks.
-        process_airlock(Keyword.delete(payload, :internal), state)
+        if OpenPlaatoKeg.AppConfig.get(:airlock_enabled, true) do
+          Logger.debug("Decoded airlock data", data: inspect(payload, limit: :infinity))
+          # Drop internal metadata — not stored for airlocks.
+          process_airlock(Keyword.delete(payload, :internal), state)
+        else
+          Logger.debug("Airlock support disabled — ignoring airlock packet")
+          {:noreply, state}
+        end
 
       true ->
         Logger.debug("Decoded keg data", data: inspect(payload, limit: :infinity))

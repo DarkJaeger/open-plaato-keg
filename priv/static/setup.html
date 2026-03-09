@@ -345,6 +345,23 @@
             <p class="help">Airlocks are fermentation sensors (temperature, bubbles/min). Set a label for each so they are recognizable on the home page.</p>
 
             <div class="field">
+              <label class="label">Airlock Support</label>
+              <p class="help">Enable or disable Plaato Airlock device processing on this server</p>
+              <div class="control">
+                <div class="buttons has-addons">
+                  <button class="button airlock-toggle-btn" id="airlockSupportOn" onclick="setAirlockEnabled(true)">
+                    <span>Enabled</span>
+                  </button>
+                  <button class="button airlock-toggle-btn" id="airlockSupportOff" onclick="setAirlockEnabled(false)">
+                    <span>Disabled</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <hr style="border-color: rgba(245, 158, 11, 0.2); margin: 1rem 0;" />
+
+            <div class="field">
               <label class="label" for="airlockId">Select Airlock</label>
               <div class="control">
                 <div class="select is-fullwidth">
@@ -1231,6 +1248,36 @@
       function setSensitivity(level) {
         sendCommand("sensitivity", { value: level.toString() });
       }
+
+      // Global config
+      function loadGlobalConfig() {
+        fetch("/api/config")
+          .then((r) => r.json())
+          .then((config) => {
+            const enabled = config.airlock_enabled !== false;
+            document.getElementById("airlockSupportOn").className =
+              "button airlock-toggle-btn" + (enabled ? " is-success is-selected" : "");
+            document.getElementById("airlockSupportOff").className =
+              "button airlock-toggle-btn" + (!enabled ? " is-danger is-selected" : "");
+          })
+          .catch((err) => console.error("Error loading config:", err));
+      }
+
+      function setAirlockEnabled(enabled) {
+        fetch("/api/config/airlock-enabled", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled }),
+        })
+          .then((r) => r.json())
+          .then(() => {
+            loadGlobalConfig();
+            showToast(enabled ? "Airlock support enabled" : "Airlock support disabled", "success");
+          })
+          .catch(() => showToast("Failed to update setting", "danger"));
+      }
+
+      loadGlobalConfig();
     </script>
   </body>
 </html>

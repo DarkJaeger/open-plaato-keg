@@ -28,6 +28,22 @@ defmodule OpenPlaatoKeg.HttpRouter do
   end
 
   # ============================================
+  # Global App Config
+  # ============================================
+
+  get "api/config" do
+    json_response(conn, 200, OpenPlaatoKeg.AppConfig.all())
+  end
+
+  post "api/config/airlock-enabled" do
+    params = conn.body_params || %{}
+    enabled = params["enabled"] in [true, "true", "1"]
+    OpenPlaatoKeg.AppConfig.put(:airlock_enabled, enabled)
+    Logger.info("Airlock support #{if enabled, do: "enabled", else: "disabled"}")
+    json_response(conn, 200, %{status: "ok", airlock_enabled: enabled})
+  end
+
+  # ============================================
   # Keg Data Endpoints
   # ============================================
 

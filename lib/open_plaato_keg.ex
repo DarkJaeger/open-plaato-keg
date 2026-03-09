@@ -26,6 +26,8 @@ defmodule OpenPlaatoKeg do
       :dets.open_file(:airlock_data, [
         {:file, String.to_charlist(airlock_path)}
       ])
+
+    OpenPlaatoKeg.AppConfig.load()
   end
 
   def tcp_listener_config do
