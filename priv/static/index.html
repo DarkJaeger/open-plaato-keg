@@ -45,7 +45,7 @@
         </div>
     </section>
 
-    <section class="section">
+    <section class="section" id="airlockSection">
         <div class="container">
             <h1 class="title is-1">Airlocks</h1>
             <p class="subtitle">Fermentation airlocks (temperature and bubbles per minute)</p>
@@ -148,6 +148,7 @@
         }
 
         const airlockContainer = document.getElementById('airlockContainer');
+        const airlockSection = document.getElementById('airlockSection');
         const tempUnit = '°C';
 
         function createAirlockCard(airlockData) {
@@ -187,20 +188,38 @@
                 kegContainer.innerHTML = '<div class="column"><p class="has-text-danger">Error loading kegs: ' + err.message + '</p></div>';
             });
 
-        // Fetch initial airlock data
-        fetch('/api/airlocks')
-            .then(response => response.json())
-            .then(airlocks => {
-                if (airlocks.length === 0) {
-                    airlockContainer.innerHTML = '<div class="column"><p class="has-text-grey">No airlocks yet. Send data to <code>POST /api/airlocks/:id/data</code> to add one.</p></div>';
+        function loadAirlocks() {
+            fetch('/api/airlocks')
+                .then(response => response.json())
+                .then(airlocks => {
+                    if (airlocks.length === 0) {
+                        airlockContainer.innerHTML = '<div class="column"><p class="has-text-grey">No airlocks yet. Send data to <code>POST /api/airlocks/:id/data</code> to add one.</p></div>';
+                    } else {
+                        airlockContainer.innerHTML = '';
+                        airlocks.forEach(airlock => {
+                            airlockContainer.appendChild(createAirlockCard(airlock));
+                        });
+                    }
+                })
+                .catch(err => {
+                    airlockContainer.innerHTML = '<div class="column"><p class="has-text-danger">Error loading airlocks: ' + err.message + '</p></div>';
+                });
+        }
+
+        // Check global config to see if airlock support is enabled; hide section and skip loading if disabled
+        fetch('/api/config')
+            .then(response => response.ok ? response.json() : Promise.reject())
+            .then(cfg => {
+                const enabled = cfg.airlock_enabled !== false;
+                if (!enabled && airlockSection) {
+                    airlockSection.style.display = 'none';
                 } else {
-                    airlocks.forEach(airlock => {
-                        airlockContainer.appendChild(createAirlockCard(airlock));
-                    });
+                    loadAirlocks();
                 }
             })
-            .catch(err => {
-                airlockContainer.innerHTML = '<div class="column"><p class="has-text-danger">Error loading airlocks: ' + err.message + '</p></div>';
+            .catch(() => {
+                // On error, fall back to previous behavior (show airlocks)
+                loadAirlocks();
             });
 
         // WebSocket connection

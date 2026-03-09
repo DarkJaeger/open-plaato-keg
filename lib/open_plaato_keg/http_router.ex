@@ -1,5 +1,6 @@
 defmodule OpenPlaatoKeg.HttpRouter do
   use Plug.Router
+  require Logger
   alias OpenPlaatoKeg.KegCommander
   alias OpenPlaatoKeg.Metrics
   alias OpenPlaatoKeg.Models.AirlockData
@@ -40,9 +41,23 @@ defmodule OpenPlaatoKeg.HttpRouter do
   post "api/config/airlock-enabled" do
     params = conn.body_params || %{}
     enabled = params["enabled"] in [true, "true", "1"]
-    OpenPlaatoKeg.AppConfig.put(:airlock_enabled, enabled)
-    Logger.info("Airlock support #{if enabled, do: "enabled", else: "disabled"}")
-    json_response(conn, 200, %{status: "ok", airlock_enabled: enabled})
+
+    case OpenPlaatoKeg.AppConfig.put(:airlock_enabled, enabled) do
+      :ok ->
+        Logger.info("Airlock support #{if enabled, do: "enabled", else: "disabled"}", [])
+        json_response(conn, 200, %{status: "ok", airlock_enabled: enabled, persisted: true})
+
+      {:error, reason} ->
+        # In-memory config is already updated; only the on-disk save failed.
+        Logger.error("Failed to persist app config: #{inspect(reason)}", [])
+
+        # Still report success to the client so the toggle works at runtime.
+        json_response(conn, 200, %{
+          status: "ok",
+          airlock_enabled: enabled,
+          persisted: false
+        })
+    end
   end
 
   # ============================================
