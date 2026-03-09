@@ -1,7 +1,7 @@
 defmodule OpenPlaatoKeg.AppConfig do
   require Logger
 
-  @defaults %{airlock_enabled: true}
+  @defaults %{airlock_enabled: true, brewfather_user_id: "", brewfather_api_key: ""}
 
   @doc "Load persisted config from disk into Application env. Call once at startup."
   def load do
@@ -11,7 +11,9 @@ defmodule OpenPlaatoKeg.AppConfig do
           {:ok, map} ->
             # Explicitly map known string keys to atoms (Poison 6 does not support keys: :atoms)
             loaded = %{
-              airlock_enabled: Map.get(map, "airlock_enabled", @defaults.airlock_enabled)
+              airlock_enabled: Map.get(map, "airlock_enabled", @defaults.airlock_enabled),
+              brewfather_user_id: Map.get(map, "brewfather_user_id", @defaults.brewfather_user_id),
+              brewfather_api_key: Map.get(map, "brewfather_api_key", @defaults.brewfather_api_key)
             }
             Application.put_env(:open_plaato_keg, :app_config, Map.merge(@defaults, loaded))
 

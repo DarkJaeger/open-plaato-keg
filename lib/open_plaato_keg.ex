@@ -31,6 +31,10 @@ defmodule OpenPlaatoKeg do
     beer_db_path = Path.join(db_folder, "beer_db.bin")
     {:ok, _beer_table} = :dets.open_file(:beer_db, [{:file, String.to_charlist(beer_db_path)}])
 
+    # Beverage library: reusable beverage recipes
+    beverages_path = Path.join(db_folder, "beverages.bin")
+    {:ok, _} = :dets.open_file(:beverages, [{:file, String.to_charlist(beverages_path)}])
+
     # Ensure tap handle image directory exists (persistent volume)
     File.mkdir_p!(Path.join(db_folder, "tap-handles"))
 

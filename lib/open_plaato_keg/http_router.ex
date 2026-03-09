@@ -5,6 +5,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
   alias OpenPlaatoKeg.Metrics
   alias OpenPlaatoKeg.Models.AirlockData
   alias OpenPlaatoKeg.Models.BeerDB
+  alias OpenPlaatoKeg.Models.BeverageDB
   alias OpenPlaatoKeg.Models.KegData
   alias OpenPlaatoKeg.MqttHandler
   alias OpenPlaatoKeg.WebSocketHandler
@@ -780,6 +781,129 @@ defmodule OpenPlaatoKeg.HttpRouter do
       json_response(conn, 200, %{status: "ok"})
     else
       json_response(conn, 400, %{error: "invalid_filename"})
+    end
+  end
+
+  # ============================================
+  # Beverage Library
+  # ============================================
+
+  get "api/beverages" do
+    json_response(conn, 200, BeverageDB.all())
+  end
+
+  get "api/beverages/:id" do
+    case BeverageDB.get(conn.params["id"]) do
+      nil -> json_response(conn, 404, %{error: "not_found"})
+      bev -> json_response(conn, 200, bev)
+    end
+  end
+
+  post "api/beverages/:id" do
+    id = conn.params["id"]
+    p = conn.body_params || %{}
+
+    data = %{
+      name:                to_string(p["name"] || ""),
+      brewery:             to_string(p["brewery"] || ""),
+      style:               to_string(p["style"] || ""),
+      abv:                 to_string(p["abv"] || ""),
+      ibu:                 to_string(p["ibu"] || ""),
+      color:               to_string(p["color"] || "#c9a849"),
+      description:         to_string(p["description"] || ""),
+      tasting_notes:       to_string(p["tasting_notes"] || ""),
+      og:                  to_string(p["og"] || ""),
+      fg:                  to_string(p["fg"] || ""),
+      srm:                 to_string(p["srm"] || ""),
+      source:              to_string(p["source"] || "manual"),
+      brewfather_batch_id: to_string(p["brewfather_batch_id"] || ""),
+      created_at:          to_string(p["created_at"] || DateTime.utc_now())
+    }
+
+    BeverageDB.put(id, data)
+    json_response(conn, 200, %{status: "ok", id: id})
+  end
+
+  post "api/beverages/:id/delete" do
+    BeverageDB.delete(conn.params["id"])
+    json_response(conn, 200, %{status: "ok"})
+  end
+
+  # ============================================
+  # Brewfather API credentials + batch import
+  # ============================================
+
+  get "api/config/brewfather" do
+    user_id = OpenPlaatoKeg.AppConfig.get(:brewfather_user_id, "")
+    configured = is_binary(user_id) && user_id != ""
+    json_response(conn, 200, %{configured: configured})
+  end
+
+  post "api/config/brewfather" do
+    p = conn.body_params || %{}
+    user_id = to_string(p["user_id"] || "") |> String.trim()
+    api_key  = to_string(p["api_key"] || "") |> String.trim()
+
+    OpenPlaatoKeg.AppConfig.put(:brewfather_user_id, user_id)
+    OpenPlaatoKeg.AppConfig.put(:brewfather_api_key, api_key)
+
+    json_response(conn, 200, %{status: "ok", configured: user_id != ""})
+  end
+
+  get "api/brewfather/batches" do
+    user_id = OpenPlaatoKeg.AppConfig.get(:brewfather_user_id, "")
+    api_key  = OpenPlaatoKeg.AppConfig.get(:brewfather_api_key, "")
+
+    if user_id == "" || api_key == "" do
+      json_response(conn, 400, %{error: "no_credentials"})
+    else
+      case OpenPlaatoKeg.BrewfatherApi.fetch_batches(user_id, api_key) do
+        {:ok, batches} ->
+          simplified = Enum.map(batches, fn b ->
+            %{
+              id:     b["_id"],
+              name:   b["name"] || get_in(b, ["recipe", "name"]) || "",
+              style:  get_in(b, ["recipe", "style", "name"]) || "",
+              abv:    b["measuredAbv"] || b["estimatedAbv"],
+              status: b["status"] || ""
+            }
+          end)
+          json_response(conn, 200, simplified)
+
+        {:error, reason} ->
+          json_response(conn, 502, %{error: reason})
+      end
+    end
+  end
+
+  post "api/brewfather/import/:batch_id" do
+    batch_id = conn.params["batch_id"]
+    user_id  = OpenPlaatoKeg.AppConfig.get(:brewfather_user_id, "")
+    api_key  = OpenPlaatoKeg.AppConfig.get(:brewfather_api_key, "")
+
+    if user_id == "" || api_key == "" do
+      json_response(conn, 400, %{error: "no_credentials"})
+    else
+      case OpenPlaatoKeg.BrewfatherApi.fetch_batches(user_id, api_key) do
+        {:ok, batches} ->
+          case Enum.find(batches, fn b -> b["_id"] == batch_id end) do
+            nil ->
+              json_response(conn, 404, %{error: "batch_not_found"})
+
+            batch ->
+              bev_data =
+                batch
+                |> OpenPlaatoKeg.BrewfatherApi.batch_to_beverage()
+                |> Map.put(:created_at, to_string(DateTime.utc_now()))
+
+              new_id = BeverageDB.generate_id()
+              BeverageDB.put(new_id, bev_data)
+              json_response(conn, 200, %{status: "ok", id: new_id})
+          end
+
+        {:error, reason} ->
+          json_response(conn, 502, %{error: reason})
+      end
     end
   end
 

@@ -41,6 +41,7 @@
           <a class="navbar-item" href="/taplist-setup.html">Tap Setup</a>
           <a class="navbar-item" href="/tap-handles.html">Tap Handles</a>
           <a class="navbar-item" href="/setup.html">Keg Setup</a>
+          <a class="navbar-item" href="/beverages.html">Beverages</a>
         </div>
       </div>
     </nav>
@@ -72,6 +73,26 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
             <h2 class="title is-5" style="margin:0;" id="formTitle">New Tap</h2>
             <button class="button is-danger is-light is-small" onclick="deleteTap()">Delete Tap</button>
+          </div>
+
+          <div class="field" id="beverageLibraryField">
+            <label class="label">Load from Beverage Library <span class="has-text-grey">(optional)</span></label>
+            <p class="help">Select a stored beverage to auto-fill the fields below.</p>
+            <div class="field has-addons">
+              <div class="control is-expanded">
+                <div class="select is-fullwidth">
+                  <select id="beverageSelect">
+                    <option value="">— select a beverage —</option>
+                  </select>
+                </div>
+              </div>
+              <div class="control">
+                <button class="button is-info" onclick="loadFromBeverage()">Load</button>
+              </div>
+              <div class="control">
+                <a class="button is-light" href="/beverages.html" target="_blank">Manage Library</a>
+              </div>
+            </div>
           </div>
 
           <div class="columns">
@@ -239,6 +260,7 @@
     let allTaps = [];
     let allKegs = [];
     let allHandles = [];
+    let allBeverages = [];
 
     function showToast(msg, type = 'info') {
       const t = document.getElementById('toast');
@@ -308,16 +330,52 @@
 
     // ── Load all data ─────────────────────────────
     async function loadAll() {
-      const [tapsRes, kegsRes, handlesRes] = await Promise.all([
+      const [tapsRes, kegsRes, handlesRes, bevsRes] = await Promise.all([
         fetch('/api/taps'),
         fetch('/api/kegs'),
         fetch('/api/tap-handles'),
+        fetch('/api/beverages'),
       ]);
-      allTaps    = await tapsRes.json();
-      allKegs    = await kegsRes.json();
-      allHandles = await handlesRes.json();
+      allTaps      = await tapsRes.json();
+      allKegs      = await kegsRes.json();
+      allHandles   = await handlesRes.json();
+      allBeverages = await bevsRes.json();
       renderTapList();
       populateDropdowns();
+    }
+
+    function loadBeverages() {
+      const sel = document.getElementById('beverageSelect');
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">— select a beverage —</option>';
+      allBeverages.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.textContent = b.name + (b.style ? ` (${b.style})` : '') + (b.abv ? ` · ${b.abv}%` : '');
+        opt.dataset.beverage = JSON.stringify(b);
+        sel.appendChild(opt);
+      });
+      if (prev) sel.value = prev;
+    }
+
+    function loadFromBeverage() {
+      const sel = document.getElementById('beverageSelect');
+      const opt = sel.options[sel.selectedIndex];
+      if (!opt || !opt.dataset.beverage) {
+        showToast('Select a beverage first', 'warning');
+        return;
+      }
+      const b = JSON.parse(opt.dataset.beverage);
+      if (b.name)          document.getElementById('beerName').value        = b.name;
+      if (b.brewery)       document.getElementById('breweryName').value     = b.brewery;
+      if (b.style)         document.getElementById('beerStyle').value       = b.style;
+      if (b.abv)           document.getElementById('beerAbv').value         = b.abv;
+      if (b.ibu)           document.getElementById('beerIbu').value         = b.ibu;
+      if (b.color)         document.getElementById('beerColor').value       = b.color;
+      if (b.description)   document.getElementById('beerDescription').value = b.description;
+      if (b.tasting_notes) document.getElementById('tastingNotes').value    = b.tasting_notes;
+      updateActiveSwatch(b.color || '#c9a849');
+      showToast('Loaded from beverage library', 'success');
     }
 
     function renderTapList() {
@@ -395,6 +453,8 @@
       document.getElementById('editBox').style.display = '';
       document.getElementById('emptyState').style.display = 'none';
       document.getElementById('formTitle').textContent = tap.name ? `Editing: ${tap.name}` : 'New Tap';
+      document.getElementById('beverageSelect').value = '';
+      loadBeverages();
 
       document.getElementById('tapNumber').value    = tap.tap_number || '';
       document.getElementById('beerName').value     = tap.name || '';
