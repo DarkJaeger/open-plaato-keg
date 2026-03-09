@@ -42,11 +42,20 @@ defmodule OpenPlaatoKeg.HttpRouter do
 
     case OpenPlaatoKeg.AppConfig.put(:airlock_enabled, enabled) do
       :ok ->
-        Logger.info("Airlock support #{if enabled, do: "enabled", else: "disabled"}")
+        Logger.info(
+          "Airlock support #{if enabled, do: "enabled", else: "disabled"}",
+          airlock_enabled: enabled
+        )
+
         json_response(conn, 200, %{status: "ok", airlock_enabled: enabled})
 
       {:error, reason} ->
-        Logger.error("Failed to save app config: #{inspect(reason)}")
+        Logger.error(
+          "Failed to save app config: #{inspect(reason)}",
+          airlock_enabled: enabled,
+          error: inspect(reason)
+        )
+
         json_response(conn, 500, %{error: "Failed to save setting: #{inspect(reason)}"})
     end
   end
