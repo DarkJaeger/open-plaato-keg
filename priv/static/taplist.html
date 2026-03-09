@@ -8,66 +8,55 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:          #09090e;
-      --surface:     #121218;
-      --surface-2:   #1a1a24;
-      --gold:        #c9a849;
-      --gold-light:  #e8c96a;
-      --text:        #f0e8d8;
-      --text-muted:  #8a8a9a;
-      --text-dim:    #4a4a5a;
-      --green:       #4caf70;
-      --border:      rgba(255,255,255,0.07);
-      --font-serif:  Georgia, 'Times New Roman', serif;
-      --font-sans:   system-ui, -apple-system, sans-serif;
-      --radius:      8px;
+      --bg:         #09090e;
+      --surface:    #111118;
+      --surface-2:  #1a1a24;
+      --gold:       #c9a849;
+      --gold-light: #e8c96a;
+      --text:       #f0e8d8;
+      --text-muted: #8a8a9a;
+      --text-dim:   #3a3a4a;
+      --green:      #4caf70;
+      --border:     rgba(255,255,255,0.07);
+      --font-serif: Georgia, 'Times New Roman', serif;
+      --font-sans:  system-ui, -apple-system, sans-serif;
     }
 
-    body {
+    html, body {
+      height: 100%;
       background: var(--bg);
       color: var(--text);
       font-family: var(--font-sans);
-      min-height: 100vh;
     }
 
-    /* ─── HEADER ─────────────────────────────────── */
+    /* ─── HEADER ───────────────────────────────────── */
     .taplist-header {
       background: var(--surface);
       border-bottom: 2px solid var(--gold);
-      padding: 1.5rem 2rem;
+      padding: 0.9rem 2rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
+      flex-shrink: 0;
     }
 
-    .header-brand {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .header-icon { font-size: 2rem; }
+    .header-brand { display: flex; align-items: center; gap: 0.75rem; }
+    .header-icon  { font-size: 1.6rem; }
 
     .header-title {
       font-family: var(--font-serif);
-      font-size: 1.8rem;
+      font-size: 1.5rem;
       font-weight: bold;
       color: var(--gold-light);
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
     }
 
     .header-subtitle {
-      font-size: 0.8rem;
+      font-size: 0.7rem;
       color: var(--text-muted);
       letter-spacing: 0.15em;
       text-transform: uppercase;
-    }
-
-    .header-meta {
-      text-align: right;
-      color: var(--text-muted);
-      font-size: 0.9rem;
     }
 
     #live-clock {
@@ -76,237 +65,202 @@
       font-variant-numeric: tabular-nums;
     }
 
-    .header-nav {
-      display: flex;
-      gap: 0.5rem;
-    }
+    #tap-count { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.1rem; text-align: right; }
 
+    .header-nav { display: flex; gap: 0.4rem; }
     .header-nav a {
       color: var(--text-muted);
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       text-decoration: none;
-      padding: 0.3rem 0.7rem;
+      padding: 0.25rem 0.6rem;
       border: 1px solid var(--border);
       border-radius: 4px;
       transition: color 0.2s, border-color 0.2s;
     }
-
     .header-nav a:hover { color: var(--gold); border-color: var(--gold); }
 
-    /* ─── GRID ───────────────────────────────────── */
-    .tap-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 1.25rem;
-      padding: 1.5rem;
+    /* ─── TAP LIST ──────────────────────────────────── */
+    .tap-list {
+      display: flex;
+      flex-direction: column;
     }
 
     .no-taps {
-      grid-column: 1 / -1;
       text-align: center;
-      padding: 4rem 1rem;
+      padding: 5rem 1rem;
       color: var(--text-muted);
-      font-size: 1.1rem;
+      font-size: 1.2rem;
     }
-
     .no-taps a { color: var(--gold); }
 
-    /* ─── CARD ───────────────────────────────────── */
+    /* ─── CARD ──────────────────────────────────────── */
     .tap-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
       display: flex;
-      flex-direction: column;
-      transition: border-color 0.3s;
+      flex-direction: row;
+      min-height: 220px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      transition: background 0.3s;
     }
 
-    .tap-card:hover { border-color: rgba(201, 168, 73, 0.25); }
+    .tap-card.is-pouring {
+      box-shadow: inset 0 0 0 2px var(--green);
+    }
 
-    .tap-card.is-pouring { border-color: var(--green); box-shadow: 0 0 12px rgba(76,175,112,0.2); }
-
-    .card-top-bar {
-      height: 4px;
-      background: var(--gold);
+    /* Left color accent bar */
+    .card-accent {
+      width: 8px;
       flex-shrink: 0;
+      background: var(--gold);
     }
 
-    .card-body {
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      flex: 1;
-    }
-
-    /* ─── TAP NUMBER ROW ─────────────────────────── */
-    .tap-number-row {
+    /* ── Handle column ── */
+    .card-handle {
+      width: 240px;
+      flex-shrink: 0;
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
-    }
-
-    .tap-number {
-      font-family: var(--font-serif);
-      font-size: 0.75rem;
-      font-weight: bold;
-      color: var(--gold);
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-    }
-
-    .pouring-badge {
-      font-size: 0.7rem;
-      font-weight: bold;
-      color: var(--green);
-      letter-spacing: 0.1em;
-      animation: pulse-text 1.2s ease-in-out infinite;
-    }
-
-    @keyframes pulse-text {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    /* ─── HANDLE IMAGE ───────────────────────────── */
-    .handle-wrap {
+      justify-content: center;
+      padding: 1.5rem;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
       position: relative;
-      width: 160px;
-      height: 160px;
-      margin: 0 auto;
-      border-radius: 6px;
-      overflow: hidden;
-      background: var(--surface-2);
     }
 
     .handle-img {
-      width: 100%;
-      height: 100%;
+      width: 200px;
+      height: 200px;
       object-fit: contain;
       display: block;
     }
 
     .handle-placeholder {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 3rem;
-      opacity: 0.5;
+      font-size: 5rem;
+      opacity: 0.25;
     }
 
-    /* ─── BEER INFO ──────────────────────────────── */
+    /* ── Info column ── */
+    .card-info {
+      flex: 1;
+      padding: 1.5rem 2.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+      min-width: 0;
+    }
+
+    .tap-label-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .tap-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+
+    .pouring-badge {
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: var(--green);
+      letter-spacing: 0.08em;
+      animation: pulse-text 1.2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-text {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.3; }
+    }
+
     .beer-name {
       font-family: var(--font-serif);
-      font-size: 1.3rem;
+      font-size: 2.4rem;
       font-weight: bold;
       color: var(--text);
-      line-height: 1.2;
+      line-height: 1.15;
     }
 
     .brewery-name {
-      font-size: 0.85rem;
+      font-size: 1.1rem;
       color: var(--text-muted);
-      margin-top: -0.4rem;
+      margin-top: -0.3rem;
     }
 
     .badges-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.35rem;
+      gap: 0.4rem;
     }
 
     .badge {
-      font-size: 0.7rem;
+      font-size: 0.75rem;
       font-weight: 600;
       letter-spacing: 0.06em;
       text-transform: uppercase;
-      padding: 0.2rem 0.55rem;
+      padding: 0.25rem 0.65rem;
       border-radius: 20px;
       background: var(--surface-2);
       color: var(--text-muted);
       border: 1px solid var(--border);
     }
 
-    .tasting-notes {
-      font-size: 0.82rem;
+    .beer-desc {
+      font-size: 1rem;
       color: var(--text-muted);
-      font-style: italic;
-      line-height: 1.5;
-      display: -webkit-box;
-      -webkit-line-clamp: 3;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      line-height: 1.6;
     }
 
-    /* ─── SENSOR / FILL ──────────────────────────── */
-    .sensor-section {
-      margin-top: auto;
-      padding-top: 0.5rem;
-      border-top: 1px solid var(--border);
+    .tasting-notes {
+      font-size: 1rem;
+      color: var(--text-muted);
+      font-style: italic;
+      line-height: 1.6;
+    }
+
+    /* ── Keg gauge column ── */
+    .card-keg {
+      width: 190px;
+      flex-shrink: 0;
       display: flex;
       flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem 1.2rem;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
       gap: 0.4rem;
     }
 
-    .fill-bar-wrap { display: flex; align-items: center; gap: 0.5rem; }
+    .keg-svg-wrap svg { display: block; }
 
-    .fill-bar-bg {
-      flex: 1;
-      height: 8px;
-      background: var(--surface-2);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .fill-bar-inner {
-      height: 100%;
-      border-radius: 4px;
-      background: linear-gradient(90deg, #b08a30, #e8c96a);
-      transition: width 0.8s ease;
-    }
-
-    .fill-pct {
-      font-size: 0.75rem;
+    .keg-temp {
+      font-size: 1rem;
       color: var(--text-muted);
-      white-space: nowrap;
-      min-width: 3.5rem;
-      text-align: right;
+      text-align: center;
     }
 
-    .sensor-row {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-
-    .temp-badge, .amount-badge {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-    }
-
-    .sensor-offline {
-      font-size: 0.75rem;
+    .keg-offline {
+      font-size: 0.85rem;
       color: var(--text-dim);
       font-style: italic;
+      text-align: center;
     }
 
-    /* ─── LOADING ─────────────────────────────────── */
+    /* ─── LOADING ───────────────────────────────────── */
     .loading-state {
-      grid-column: 1 / -1;
       text-align: center;
-      padding: 4rem 1rem;
+      padding: 5rem 1rem;
       color: var(--text-muted);
     }
 
     .spinner {
       display: inline-block;
-      width: 2rem;
-      height: 2rem;
+      width: 2.5rem;
+      height: 2.5rem;
       border: 3px solid var(--border);
       border-top-color: var(--gold);
       border-radius: 50%;
@@ -315,14 +269,6 @@
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ─── RESPONSIVE ─────────────────────────────── */
-    @media (max-width: 600px) {
-      .taplist-header { flex-direction: column; align-items: flex-start; }
-      .header-meta { text-align: left; }
-      .tap-grid { padding: 1rem; gap: 1rem; }
-      .handle-wrap { width: 120px; height: 120px; }
-    }
   </style>
 </head>
 <body>
@@ -335,9 +281,9 @@
         <div class="header-subtitle">Open Plaato</div>
       </div>
     </div>
-    <div class="header-meta">
+    <div style="text-align:right;">
       <div id="live-clock"></div>
-      <div id="tap-count" style="font-size:0.8rem;color:var(--text-dim);margin-top:0.2rem;"></div>
+      <div id="tap-count"></div>
     </div>
     <nav class="header-nav">
       <a href="/index.html">Home</a>
@@ -348,7 +294,7 @@
   </header>
 
   <main>
-    <div class="tap-grid" id="tapGrid">
+    <div class="tap-list" id="tapList">
       <div class="loading-state">
         <div class="spinner"></div>
         <p>Loading taps…</p>
@@ -357,50 +303,85 @@
   </main>
 
   <script>
-    // ── Clock ─────────────────────────────────────
+    // ── Clock ──────────────────────────────────────
     function updateClock() {
-      const now = new Date();
-      document.getElementById('live-clock').textContent = now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+      document.getElementById('live-clock').textContent =
+        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
     updateClock();
     setInterval(updateClock, 10000);
 
-    // ── Data state ────────────────────────────────
+    // ── State ──────────────────────────────────────
     let tapsData = [];
-    let kegsData = {};  // keyed by keg id
+    let kegsData = {};
 
     function escHtml(s) {
       return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    // ── Render ────────────────────────────────────
-    function render() {
-      const grid = document.getElementById('tapGrid');
+    // ── Keg SVG graphic ────────────────────────────
+    function buildKegSvg(pct, color, amount, unit) {
+      const uid   = Math.random().toString(36).slice(2, 8);
+      const bTop  = 42;   // body top y
+      const bBot  = 178;  // body bottom y
+      const bH    = bBot - bTop;
+      const fillH = Math.max(0, bH * (pct / 100));
+      const fillY = bBot - fillH;
+      const fc    = color || '#c9a849';
 
-      const countEl = document.getElementById('tap-count');
-      countEl.textContent = tapsData.length ? `${tapsData.length} on tap` : '';
+      return `<svg viewBox="0 0 150 210" width="150" height="210" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <clipPath id="kc${uid}">
+      <rect x="18" y="${bTop}" width="114" height="${bH}" rx="6"/>
+    </clipPath>
+    <linearGradient id="kg${uid}" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="${fc}" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="${fc}" stop-opacity="0.25"/>
+    </linearGradient>
+  </defs>
 
-      if (!tapsData.length) {
-        grid.innerHTML = `<p class="no-taps">No taps configured yet. Visit <a href="/taplist-setup.html">Tap Setup</a> to add taps.</p>`;
-        return;
-      }
+  <!-- body bg -->
+  <rect x="18" y="${bTop}" width="114" height="${bH}" rx="6" fill="#0d0d16" stroke="#252535" stroke-width="2"/>
 
-      grid.innerHTML = '';
-      tapsData.forEach(tap => grid.appendChild(buildCard(tap, kegsData[tap.keg_id])));
+  <!-- fill -->
+  <g clip-path="url(#kc${uid})">
+    <rect x="18" y="${fillY}" width="114" height="${fillH}" fill="url(#kg${uid})"/>
+    ${fillH > 2 ? `<rect x="18" y="${fillY}" width="114" height="3" fill="${fc}" opacity="0.7"/>` : ''}
+  </g>
+
+  <!-- bands -->
+  <rect x="16" y="78"  width="118" height="7" rx="3.5" fill="#151522" stroke="#252535" stroke-width="1.5"/>
+  <rect x="16" y="135" width="118" height="7" rx="3.5" fill="#151522" stroke="#252535" stroke-width="1.5"/>
+
+  <!-- top cap -->
+  <ellipse cx="75" cy="${bTop}" rx="57" ry="11" fill="#111120" stroke="#252535" stroke-width="2"/>
+  <!-- valve stem -->
+  <rect x="58" y="20" width="34" height="22" rx="5" fill="#1a1a28" stroke="#252535" stroke-width="1.5"/>
+  <ellipse cx="75" cy="20" rx="12" ry="5" fill="#222234" stroke="#252535" stroke-width="1.5"/>
+
+  <!-- bottom cap -->
+  <ellipse cx="75" cy="${bBot}" rx="57" ry="11" fill="#111120" stroke="#252535" stroke-width="2"/>
+
+  <!-- pct text -->
+  <text x="75" y="118" text-anchor="middle" fill="white" font-size="28" font-weight="bold" font-family="system-ui,sans-serif">${Math.round(pct)}%</text>
+  ${amount != null
+    ? `<text x="75" y="138" text-anchor="middle" fill="#8a8a9a" font-size="12" font-family="system-ui,sans-serif">${parseFloat(amount).toFixed(1)} ${unit || ''}</text>`
+    : ''}
+</svg>`;
     }
 
+    // ── Build card ─────────────────────────────────
     function buildCard(tap, keg) {
-      const color = tap.color || '#c9a849';
-      const pct = keg ? Math.max(0, Math.min(100, parseFloat(keg.percent_of_beer_left || 0))) : null;
+      const color     = tap.color || '#c9a849';
+      const pct       = keg ? Math.max(0, Math.min(100, parseFloat(keg.percent_of_beer_left || 0))) : null;
       const isPouring = keg && (keg.is_pouring === true || keg.is_pouring === '1' || keg.is_pouring === 1);
-      const tempRaw = keg ? (keg.keg_temperature || keg.keg_temperature_c) : null;
-      const tempStr = tempRaw != null ? `🌡️ ${parseFloat(tempRaw).toFixed(1)}°` : '';
-      const amount = keg ? keg.amount_left : null;
-      const unit = keg ? (keg.beer_left_unit || '') : '';
+      const tempRaw   = keg ? (keg.keg_temperature ?? keg.keg_temperature_c ?? null) : null;
+      const tempStr   = tempRaw != null ? `🌡️ ${parseFloat(tempRaw).toFixed(1)}°` : '';
+      const amount    = keg?.amount_left ?? null;
+      const unit      = keg?.beer_left_unit ?? '';
+      const tempUnit  = keg?.temperature_unit ?? '°C';
 
       const card = document.createElement('div');
       card.className = 'tap-card' + (isPouring ? ' is-pouring' : '');
@@ -414,109 +395,106 @@
         tap.ibu   && `<span class="badge">${escHtml(tap.ibu)} IBU</span>`,
       ].filter(Boolean).join('');
 
-      // fill bar
-      let sensorHtml = '';
-      if (keg && pct !== null) {
-        const amountStr = amount != null ? ` · ${parseFloat(amount).toFixed(1)} ${unit}` : '';
-        sensorHtml = `
-          <div class="fill-bar-wrap">
-            <div class="fill-bar-bg">
-              <div class="fill-bar-inner" style="width:${pct}%; background: linear-gradient(90deg, ${color}99, ${color});"></div>
-            </div>
-            <span class="fill-pct">${Math.round(pct)}%${amountStr}</span>
-          </div>
-          <div class="sensor-row">
-            ${tempStr ? `<span class="temp-badge">${tempStr}</span>` : ''}
-          </div>`;
-      } else if (tap.keg_id) {
-        sensorHtml = '<p class="sensor-offline">Sensor offline</p>';
-      } else {
-        sensorHtml = '<p class="sensor-offline">No sensor linked</p>';
-      }
-
-      const handleSrc = tap.handle_image ? `/uploads/tap-handles/${encodeURIComponent(tap.handle_image)}` : '';
+      // handle
+      const handleSrc = tap.handle_image
+        ? `/uploads/tap-handles/${encodeURIComponent(tap.handle_image)}`
+        : '';
       const handleHtml = handleSrc
         ? `<img class="handle-img" src="${handleSrc}" alt="tap handle"
-               onerror="this.style.display='none'; this.parentElement.querySelector('.handle-placeholder').style.display='flex';" />`
+               onerror="this.style.display='none';this.nextElementSibling.style.display='block';"/>`
         : '';
 
+      // keg gauge
+      let kegHtml = '';
+      if (pct !== null) {
+        kegHtml = buildKegSvg(pct, color, amount, unit);
+        if (tempStr) kegHtml += `<div class="keg-temp">${escHtml(tempStr)}${escHtml(tempUnit)}</div>`;
+        if (isPouring) kegHtml += `<div class="pouring-badge">● POURING</div>`;
+      } else if (tap.keg_id) {
+        kegHtml = '<p class="keg-offline">Sensor offline</p>';
+      } else {
+        kegHtml = '<p class="keg-offline">No sensor linked</p>';
+      }
+
       card.innerHTML = `
-        <div class="card-top-bar" style="background:${color};"></div>
-        <div class="card-body">
-          <div class="tap-number-row">
-            <span class="tap-number">TAP ${escHtml(String(tap.tap_number || '?'))}</span>
-            ${isPouring ? '<span class="pouring-badge">● POURING</span>' : ''}
+        <div class="card-accent" style="background:${color};"></div>
+        <div class="card-handle">
+          ${handleHtml}
+          <span class="handle-placeholder" style="display:${handleSrc ? 'none' : 'block'}">🍺</span>
+        </div>
+        <div class="card-info">
+          <div class="tap-label-row">
+            <span class="tap-label">TAP ${escHtml(String(tap.tap_number || '?'))}</span>
+            ${isPouring ? '<span class="pouring-badge">● NOW POURING</span>' : ''}
           </div>
-          <div class="handle-wrap">
-            ${handleHtml}
-            <div class="handle-placeholder" style="background:${color}22;">${tap.handle_image ? '' : '🍺'}</div>
-          </div>
-          <div>
-            <h2 class="beer-name">${escHtml(tap.name || 'Unnamed Beer')}</h2>
-            ${tap.brewery ? `<p class="brewery-name">${escHtml(tap.brewery)}</p>` : ''}
-          </div>
+          <h2 class="beer-name">${escHtml(tap.name || 'Unnamed Beer')}</h2>
+          ${tap.brewery ? `<p class="brewery-name">${escHtml(tap.brewery)}</p>` : ''}
           ${badges ? `<div class="badges-row">${badges}</div>` : ''}
-          ${tap.tasting_notes ? `<p class="tasting-notes">"${escHtml(tap.tasting_notes)}"</p>` : (tap.description ? `<p class="tasting-notes">${escHtml(tap.description)}</p>` : '')}
-          <div class="sensor-section">${sensorHtml}</div>
-        </div>`;
+          ${tap.description ? `<p class="beer-desc">${escHtml(tap.description)}</p>` : ''}
+          ${tap.tasting_notes ? `<p class="tasting-notes">"${escHtml(tap.tasting_notes)}"</p>` : ''}
+        </div>
+        <div class="card-keg">${kegHtml}</div>`;
 
       return card;
     }
 
-    // ── Partial update via WebSocket ──────────────
-    function updateCardSensor(kegId) {
-      const keg = kegsData[kegId];
-      if (!keg) return;
-      const tap = tapsData.find(t => t.keg_id === kegId);
-      if (!tap) return;
+    // ── Render ─────────────────────────────────────
+    function render() {
+      const list = document.getElementById('tapList');
+      document.getElementById('tap-count').textContent =
+        tapsData.length ? `${tapsData.length} on tap` : '';
 
-      // Re-render the specific card
-      const existing = document.querySelector(`.tap-card[data-keg-id="${CSS.escape(kegId)}"]`);
-      if (existing) {
-        const newCard = buildCard(tap, keg);
-        existing.replaceWith(newCard);
+      if (!tapsData.length) {
+        list.innerHTML = `<p class="no-taps">No taps configured yet. Visit <a href="/taplist-setup.html">Tap Setup</a> to add taps.</p>`;
+        return;
       }
+
+      list.innerHTML = '';
+      tapsData.forEach(tap => list.appendChild(buildCard(tap, kegsData[tap.keg_id])));
     }
 
-    // ── Load data ─────────────────────────────────
+    // ── Partial keg update ─────────────────────────
+    function updateCard(kegId) {
+      const tap = tapsData.find(t => t.keg_id === kegId);
+      if (!tap) return;
+      const existing = document.querySelector(`.tap-card[data-keg-id="${CSS.escape(kegId)}"]`);
+      if (existing) existing.replaceWith(buildCard(tap, kegsData[kegId]));
+    }
+
+    // ── Load ───────────────────────────────────────
     async function loadAll() {
       try {
-        const [tapsRes, kegsRes] = await Promise.all([
-          fetch('/api/taps'),
-          fetch('/api/kegs'),
-        ]);
+        const [tapsRes, kegsRes] = await Promise.all([fetch('/api/taps'), fetch('/api/kegs')]);
         tapsData = await tapsRes.json();
         const kegs = await kegsRes.json();
         kegsData = {};
         for (const k of kegs) kegsData[k.id] = k;
         render();
       } catch (e) {
-        document.getElementById('tapGrid').innerHTML =
+        document.getElementById('tapList').innerHTML =
           '<p class="no-taps">Could not load tap data. Is the server running?</p>';
       }
     }
 
-    // ── WebSocket ─────────────────────────────────
+    // ── WebSocket ──────────────────────────────────
     function connectWS() {
       const ws = new WebSocket(`ws://${location.host}/ws`);
-
       ws.addEventListener('message', ev => {
         try {
           const data = JSON.parse(ev.data);
           if (data.type === 'airlock') return;
           if (data.id && kegsData[data.id] !== undefined) {
             kegsData[data.id] = { ...kegsData[data.id], ...data };
-            updateCardSensor(data.id);
+            updateCard(data.id);
           }
         } catch (_) {}
       });
-
       ws.addEventListener('close', () => setTimeout(connectWS, 5000));
       ws.addEventListener('error', () => ws.close());
     }
 
     loadAll();
-    setInterval(loadAll, 60000);  // full refresh every minute
+    setInterval(loadAll, 60000);
     connectWS();
   </script>
 </body>
