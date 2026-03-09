@@ -182,6 +182,22 @@
             </div>
           </div>
 
+          <hr />
+
+          <div class="field">
+            <label class="label">open-tap Device ID <span class="has-text-grey" style="font-weight:normal;">(max 6 chars)</span></label>
+            <p class="help">If you use an <strong>open-tap</strong> ESP32 display, enter the Keg ID you configured in the device here. The device will call <code>GET /get_keg/{id}</code> every 10 s.</p>
+            <div class="control">
+              <input class="input" type="text" id="deviceId" maxlength="6" placeholder="e.g. tap1" style="max-width:160px;font-family:monospace;" />
+            </div>
+            <div id="deviceIdCallout" style="display:none;margin-top:0.5rem;background:rgba(50,115,220,0.12);border:1px solid rgba(50,115,220,0.35);border-radius:6px;padding:0.6rem 0.9rem;">
+              <p style="font-size:0.85rem;color:#a0c4ff;">
+                Enter <strong id="deviceIdDisplay" style="font-family:monospace;color:#fff;"></strong>
+                as the <em>Keg ID</em> in your open-tap WiFi setup screen.
+              </p>
+            </div>
+          </div>
+
           <div class="field" style="margin-top:1.5rem;">
             <div class="control">
               <button class="button is-primary is-medium" onclick="saveTap()">Save Tap</button>
@@ -257,6 +273,22 @@
 
     document.addEventListener('input', ev => {
       if (ev.target.id === 'beerColor') updateActiveSwatch(ev.target.value);
+    });
+
+    // ── open-tap device ID callout ────────────────
+    function updateDeviceIdCallout(val) {
+      const callout = document.getElementById('deviceIdCallout');
+      const display = document.getElementById('deviceIdDisplay');
+      if (val && val.trim()) {
+        display.textContent = val.trim();
+        callout.style.display = '';
+      } else {
+        callout.style.display = 'none';
+      }
+    }
+
+    document.addEventListener('input', ev => {
+      if (ev.target.id === 'deviceId') updateDeviceIdCallout(ev.target.value);
     });
 
     // ── Handle image preview ──────────────────────
@@ -347,7 +379,7 @@
         tap_number: maxNum + 1,
         name: '', brewery: '', style: '', abv: '', ibu: '',
         color: '#c9a849', description: '', tasting_notes: '',
-        keg_id: '', handle_image: ''
+        keg_id: '', handle_image: '', device_id: ''
       });
     }
 
@@ -375,6 +407,8 @@
       document.getElementById('tastingNotes').value = tap.tasting_notes || '';
       document.getElementById('linkedKeg').value    = tap.keg_id || '';
       document.getElementById('handleImage').value  = tap.handle_image || '';
+      document.getElementById('deviceId').value     = tap.device_id || '';
+      updateDeviceIdCallout(tap.device_id || '');
 
       updateActiveSwatch(tap.color || '#c9a849');
 
@@ -413,6 +447,7 @@
         tasting_notes: document.getElementById('tastingNotes').value.trim(),
         keg_id:        document.getElementById('linkedKeg').value || null,
         handle_image:  document.getElementById('handleImage').value || null,
+        device_id:     document.getElementById('deviceId').value.trim().slice(0, 6) || null,
       };
 
       try {

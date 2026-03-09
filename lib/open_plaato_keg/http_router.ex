@@ -566,6 +566,8 @@ defmodule OpenPlaatoKeg.HttpRouter do
     id = conn.params["id"]
     p = conn.body_params || %{}
 
+    raw_device_id = to_string(p["device_id"] || "") |> String.trim() |> String.slice(0, 6)
+
     data = %{
       tap_number: parse_int_or_nil(p["tap_number"]),
       name: to_string(p["name"] || ""),
@@ -577,7 +579,8 @@ defmodule OpenPlaatoKeg.HttpRouter do
       description: to_string(p["description"] || ""),
       tasting_notes: to_string(p["tasting_notes"] || ""),
       keg_id: nilify_empty(p["keg_id"]),
-      handle_image: nilify_empty(p["handle_image"])
+      handle_image: nilify_empty(p["handle_image"]),
+      device_id: nilify_empty(raw_device_id)
     }
 
     BeerDB.put_tap(id, data)
@@ -587,6 +590,110 @@ defmodule OpenPlaatoKeg.HttpRouter do
   post "api/taps/:id/delete" do
     BeerDB.delete_tap(conn.params["id"])
     json_response(conn, 200, %{status: "ok"})
+  end
+
+  # ============================================
+  # open-tap ESP32 endpoint
+  # GET /get_keg/:device_id
+  # Returns tap + live keg data in open-tap JSON format.
+  # Weights are in KG (floats); logo_url points to the handle image.
+  # device_id is up to 6 chars (configured in ESP32 NVS).
+  # ============================================
+
+  get "get_keg/:device_id" do
+    device_id = conn.params["device_id"]
+
+    tap =
+      BeerDB.all_taps()
+      |> Enum.find(fn t ->
+        did = Map.get(t, :device_id) || Map.get(t, "device_id")
+        did && String.downcase(to_string(did)) == String.downcase(device_id)
+      end)
+
+    case tap do
+      nil ->
+        json_response(conn, 404, %{error: "no tap configured for device_id '#{device_id}'"})
+
+      tap ->
+        keg_id = Map.get(tap, :keg_id) || Map.get(tap, "keg_id")
+        keg = if keg_id, do: KegData.get(keg_id), else: %{}
+        keg = keg || %{}
+
+        # max_keg_volume is the total full weight in kg (Plaato pin 76)
+        keg_capacity_kg =
+          case keg[:max_keg_volume] || keg["max_keg_volume"] do
+            nil -> nil
+            v -> parse_float_or_nil(v)
+          end
+
+        # empty_keg_weight is the tare/empty weight in kg (Plaato pin 62)
+        empty_keg_weight_kg =
+          case keg[:empty_keg_weight] || keg["empty_keg_weight"] do
+            nil -> nil
+            v -> parse_float_or_nil(v)
+          end
+
+        # current_weight: prefer weight_raw (pin 53, direct scale reading in kg),
+        # fall back to empty + amount_left converted to kg
+        current_weight_kg =
+          case keg[:weight_raw] || keg["weight_raw"] do
+            nil ->
+              amount_left = parse_float_or_nil(keg[:amount_left] || keg["amount_left"])
+              unit = to_string(keg[:beer_left_unit] || keg["beer_left_unit"] || "")
+
+              beer_kg =
+                cond do
+                  amount_left == nil -> nil
+                  unit in ["litre", "l", "liter"] -> amount_left * 1.0
+                  unit in ["lbs", "lb", "pounds"] -> amount_left * 0.453592
+                  unit in ["gal", "gallon", "gallons"] -> amount_left * 3.78541
+                  true -> amount_left
+                end
+
+              case {empty_keg_weight_kg, beer_kg} do
+                {e, b} when is_float(e) and is_float(b) -> e + b
+                _ -> nil
+              end
+
+            raw ->
+              parse_float_or_nil(raw)
+          end
+
+        handle_image = Map.get(tap, :handle_image) || Map.get(tap, "handle_image")
+
+        logo_url =
+          if handle_image && handle_image != "" do
+            scheme = if conn.scheme == :https, do: "https", else: "http"
+            host = conn.host
+            port = conn.port
+            port_str = if port in [80, 443], do: "", else: ":#{port}"
+            "#{scheme}://#{host}#{port_str}/uploads/tap-handles/#{URI.encode(handle_image)}"
+          else
+            nil
+          end
+
+        beer_name = Map.get(tap, :name) || Map.get(tap, "name") || ""
+        brewery = Map.get(tap, :brewery) || Map.get(tap, "brewery") || ""
+
+        description =
+          [Map.get(tap, :description) || Map.get(tap, "description"),
+           Map.get(tap, :tasting_notes) || Map.get(tap, "tasting_notes")]
+          |> Enum.reject(&(is_nil(&1) || &1 == ""))
+          |> Enum.join(" | ")
+
+        full_name = if brewery != "", do: "#{beer_name} - #{brewery}", else: beer_name
+
+        json_response(conn, 200, %{
+          id: device_id,
+          name: full_name,
+          description: description,
+          logo_url: logo_url,
+          keg_capacity: keg_capacity_kg,
+          empty_keg_weight: empty_keg_weight_kg,
+          current_weight: current_weight_kg,
+          keg_id: keg_id
+        })
+    end
   end
 
   # ============================================
@@ -725,6 +832,14 @@ defmodule OpenPlaatoKeg.HttpRouter do
   defp parse_int_or_nil(v) do
     case Integer.parse(to_string(v)) do
       {i, _} -> i
+      :error -> nil
+    end
+  end
+
+  defp parse_float_or_nil(nil), do: nil
+  defp parse_float_or_nil(v) do
+    case Float.parse(to_string(v)) do
+      {f, _} -> f
       :error -> nil
     end
   end
