@@ -14,7 +14,9 @@
       "Bash(mix credo:*)",
       "Bash(git:*)",
       "Bash(gh release:*)",
-      "Bash(gh workflow:*)"
+      "Bash(gh workflow:*)",
+      "Bash(xargs grep:*)",
+      "Bash(xargs ls:*)"
     ]
   }
 }
