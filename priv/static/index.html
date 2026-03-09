@@ -35,7 +35,7 @@
     </nav>
   </div>
 
-    <section class="section">
+    <section class="section" id="airlockSection">
         <div class="container">
             <h1 class="title is-1">Kegs</h1>
             <div class="columns is-multiline" id="kegContainer"></div>
@@ -145,7 +145,9 @@
         }
 
         const airlockContainer = document.getElementById('airlockContainer');
+        const airlockSection = document.getElementById('airlockSection');
         const tempUnit = '°C';
+        let airlockSupportEnabled = true;
 
         function createAirlockCard(airlockData) {
             const column = document.createElement('div');
@@ -184,20 +186,52 @@
                 kegContainer.innerHTML = '<div class="column"><p class="has-text-danger">Error loading kegs: ' + err.message + '</p></div>';
             });
 
-        // Fetch initial airlock data
-        fetch('/api/airlocks')
+        function applyAirlockSupport(enabled) {
+            airlockSupportEnabled = enabled;
+            if (!enabled && airlockSection) {
+                airlockSection.style.display = 'none';
+            } else if (airlockSection) {
+                airlockSection.style.display = '';
+            }
+        }
+
+        function loadAirlocks() {
+            if (!airlockSupportEnabled) {
+                return;
+            }
+            fetch('/api/airlocks')
+                .then(response => response.json())
+                .then(airlocks => {
+                    if (!airlockSupportEnabled) {
+                        return;
+                    }
+                    if (airlocks.length === 0) {
+                        airlockContainer.innerHTML = '<div class="column"><p class="has-text-grey">No airlocks yet. Send data to <code>POST /api/airlocks/:id/data</code> to add one.</p></div>';
+                    } else {
+                        airlocks.forEach(airlock => {
+                            airlockContainer.appendChild(createAirlockCard(airlock));
+                        });
+                    }
+                })
+                .catch(err => {
+                    airlockContainer.innerHTML = '<div class="column"><p class="has-text-danger">Error loading airlocks: ' + err.message + '</p></div>';
+                });
+        }
+
+        // Load global config once to see if airlock support is enabled, then load airlocks if so
+        fetch('/api/config')
             .then(response => response.json())
-            .then(airlocks => {
-                if (airlocks.length === 0) {
-                    airlockContainer.innerHTML = '<div class="column"><p class="has-text-grey">No airlocks yet. Send data to <code>POST /api/airlocks/:id/data</code> to add one.</p></div>';
-                } else {
-                    airlocks.forEach(airlock => {
-                        airlockContainer.appendChild(createAirlockCard(airlock));
-                    });
+            .then(cfg => {
+                const enabled = cfg.airlock_enabled !== false;
+                applyAirlockSupport(enabled);
+                if (enabled) {
+                    loadAirlocks();
                 }
             })
-            .catch(err => {
-                airlockContainer.innerHTML = '<div class="column"><p class="has-text-danger">Error loading airlocks: ' + err.message + '</p></div>';
+            .catch(() => {
+                // On error, assume enabled so behavior stays backward compatible
+                applyAirlockSupport(true);
+                loadAirlocks();
             });
 
         // WebSocket connection
@@ -210,6 +244,9 @@
         socket.addEventListener('message', (event) => {
             const msg = JSON.parse(event.data);
             if (msg.type === 'airlock') {
+                if (!airlockSupportEnabled) {
+                    return;
+                }
                 const data = msg.data;
                 const airlockId = data.id;
                 const existingCard = document.querySelector(`#airlockContainer [data-airlock-id="${cssEscapeAttrValue(airlockId)}"]`);
