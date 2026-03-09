@@ -30,10 +30,16 @@
         <div class="navbar-start">
           <a class="navbar-item" href="/index.html">Home</a>
           <a class="navbar-item" href="/taplist.html">Tap List</a>
-          <a class="navbar-item" href="/taplist-setup.html">Tap Setup</a>
-          <a class="navbar-item" href="/tap-handles.html">Tap Handles</a>
-          <a class="navbar-item" href="/setup.html">Keg Setup</a>
-          <a class="navbar-item" href="/beverages.html">Beverages</a>
+          <div class="navbar-item has-dropdown" id="configureDropdown">
+            <a class="navbar-link" onclick="toggleDropdown(event)">Configure</a>
+            <div class="navbar-dropdown">
+              <a class="navbar-item" href="/taplist-setup.html">Tap Setup</a>
+              <a class="navbar-item" href="/tap-handles.html">Tap Handles</a>
+              <a class="navbar-item" href="/setup.html">Keg Setup</a>
+              <a class="navbar-item" href="/airlock-setup.html">Airlock Setup</a>
+              <a class="navbar-item" href="/beverages.html">Beverages</a>
+            </div>
+          </div>
         </div>
       </div>
     </nav>
@@ -57,22 +63,22 @@
 
     <script>
       // Navbar burger menu
-      const navbarBurgers = Array.prototype.slice.call(
-        document.querySelectorAll(".navbar-burger"),
-        0
+      document.querySelectorAll('.navbar-burger').forEach(el =>
+        el.addEventListener('click', () => {
+          document.getElementById(el.dataset.target).classList.toggle('is-active');
+          el.classList.toggle('is-active');
+        })
       );
 
-      if (navbarBurgers.length > 0) {
-        navbarBurgers.forEach((el) => {
-          el.addEventListener("click", () => {
-            const target = el.dataset.target;
-            const $target = document.getElementById(target);
-
-            el.classList.toggle("is-active");
-            $target.classList.toggle("is-active");
-          });
-        });
+      // Configure dropdown (click to toggle on desktop; hover handled by CSS)
+      function toggleDropdown(e) {
+        e.preventDefault();
+        document.getElementById('configureDropdown').classList.toggle('is-open');
       }
+      document.addEventListener('click', e => {
+        if (!e.target.closest('#configureDropdown'))
+          document.getElementById('configureDropdown')?.classList.remove('is-open');
+      });
 
         const kegContainer = document.getElementById('kegContainer');
 
