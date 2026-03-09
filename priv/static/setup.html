@@ -1269,12 +1269,16 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ enabled }),
         })
-          .then((r) => r.json())
-          .then(() => {
+          .then((r) => r.json().then((data) => ({ ok: r.ok, data })))
+          .then(({ ok, data }) => {
+            if (!ok) {
+              showToast("Failed to save: " + (data.error || "unknown error"), "danger");
+              return;
+            }
             loadGlobalConfig();
             showToast(enabled ? "Airlock support enabled" : "Airlock support disabled", "success");
           })
-          .catch(() => showToast("Failed to update setting", "danger"));
+          .catch(() => showToast("Failed to update setting — check server logs", "danger"));
       }
 
       loadGlobalConfig();

@@ -7,9 +7,13 @@ defmodule OpenPlaatoKeg.AppConfig do
   def load do
     case File.read(config_path()) do
       {:ok, content} ->
-        case Poison.decode(content, keys: :atoms) do
+        case Poison.decode(content) do
           {:ok, map} ->
-            Application.put_env(:open_plaato_keg, :app_config, Map.merge(@defaults, map))
+            # Explicitly map known string keys to atoms (Poison 6 does not support keys: :atoms)
+            loaded = %{
+              airlock_enabled: Map.get(map, "airlock_enabled", @defaults.airlock_enabled)
+            }
+            Application.put_env(:open_plaato_keg, :app_config, Map.merge(@defaults, loaded))
 
           _ ->
             Application.put_env(:open_plaato_keg, :app_config, @defaults)
@@ -31,7 +35,13 @@ defmodule OpenPlaatoKeg.AppConfig do
     current = Application.get_env(:open_plaato_keg, :app_config, @defaults)
     updated = Map.put(current, key, value)
     Application.put_env(:open_plaato_keg, :app_config, updated)
-    save(updated)
+
+    case save(updated) do
+      :ok -> :ok
+      {:ok} -> :ok
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :save_failed}
+    end
   end
 
   def all do
@@ -46,7 +56,8 @@ defmodule OpenPlaatoKeg.AppConfig do
   defp save(config) do
     case Poison.encode(config) do
       {:ok, json} -> File.write(config_path(), json)
-      _ -> :error
+      {:error, reason} -> {:error, reason}
+      _ -> {:error, :encode_failed}
     end
   end
 end
