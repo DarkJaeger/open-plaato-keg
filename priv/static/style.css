@@ -80,6 +80,8 @@ body {
   backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(245, 158, 11, 0.2);
   padding: var(--space-sm) var(--space-lg);
+  position: relative;
+  z-index: 100;
 }
 
 .navbar-menu {
@@ -196,6 +198,7 @@ body {
     top: 100%;
     left: 0;
     right: 0;
+    z-index: 100;
     background: rgba(15, 23, 42, 0.98);
     padding: var(--space-md);
     border-bottom: 1px solid rgba(245, 158, 11, 0.2);
