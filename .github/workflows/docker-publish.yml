@@ -26,8 +26,9 @@ jobs:
       - name: Compute image tags
         id: tags
         run: |
+          SAFE_REF=$(echo "${{ github.ref_name }}" | tr '/' '-')
           TAGS="ghcr.io/darkjaeger/open-plaato-keg:${{ github.sha }}"
-          TAGS="$TAGS,ghcr.io/darkjaeger/open-plaato-keg:${{ github.ref_name }}"
+          TAGS="$TAGS,ghcr.io/darkjaeger/open-plaato-keg:${SAFE_REF}"
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
             TAGS="$TAGS,ghcr.io/darkjaeger/open-plaato-keg:latest"
           fi

@@ -4,6 +4,8 @@ defmodule OpenPlaatoKeg.HttpRouter do
   alias OpenPlaatoKeg.KegCommander
   alias OpenPlaatoKeg.Metrics
   alias OpenPlaatoKeg.Models.AirlockData
+  alias OpenPlaatoKeg.Models.BeerDB
+  alias OpenPlaatoKeg.Models.BeverageDB
   alias OpenPlaatoKeg.Models.KegData
   alias OpenPlaatoKeg.MqttHandler
   alias OpenPlaatoKeg.WebSocketHandler
@@ -14,9 +16,10 @@ defmodule OpenPlaatoKeg.HttpRouter do
   )
 
   plug(Plug.Parsers,
-    parsers: [:urlencoded, :json],
-    pass: ["application/json"],
-    json_decoder: Poison
+    parsers: [:urlencoded, :json, :multipart],
+    pass: ["*/*"],
+    json_decoder: Poison,
+    length: 10_000_000
   )
 
   plug(:match)
@@ -561,6 +564,350 @@ defmodule OpenPlaatoKeg.HttpRouter do
   end
 
   # ============================================
+  # Tap List (beer.db)
+  # ============================================
+
+  get "api/taps" do
+    json_response(conn, 200, BeerDB.all_taps())
+  end
+
+  get "api/taps/:id" do
+    case BeerDB.get_tap(conn.params["id"]) do
+      nil -> json_response(conn, 404, %{error: "not_found"})
+      tap -> json_response(conn, 200, tap)
+    end
+  end
+
+  post "api/taps/:id" do
+    id = conn.params["id"]
+    p = conn.body_params || %{}
+
+    raw_device_id = to_string(p["device_id"] || "") |> String.trim() |> String.slice(0, 6)
+
+    data = %{
+      tap_number: parse_int_or_nil(p["tap_number"]),
+      name: to_string(p["name"] || ""),
+      brewery: to_string(p["brewery"] || ""),
+      style: to_string(p["style"] || ""),
+      abv: to_string(p["abv"] || ""),
+      ibu: to_string(p["ibu"] || ""),
+      color: to_string(p["color"] || "#c9a849"),
+      description: to_string(p["description"] || ""),
+      tasting_notes: to_string(p["tasting_notes"] || ""),
+      keg_id: nilify_empty(p["keg_id"]),
+      handle_image: nilify_empty(p["handle_image"]),
+      device_id: nilify_empty(raw_device_id)
+    }
+
+    BeerDB.put_tap(id, data)
+    json_response(conn, 200, %{status: "ok", id: id})
+  end
+
+  post "api/taps/:id/delete" do
+    BeerDB.delete_tap(conn.params["id"])
+    json_response(conn, 200, %{status: "ok"})
+  end
+
+  # ============================================
+  # open-tap ESP32 endpoint
+  # GET /get_keg/:device_id
+  # Returns tap + live keg data in open-tap JSON format.
+  # Weights are in KG (floats); logo_url points to the handle image.
+  # device_id is up to 6 chars (configured in ESP32 NVS).
+  # ============================================
+
+  get "get_keg/:device_id" do
+    device_id = conn.params["device_id"]
+
+    tap =
+      BeerDB.all_taps()
+      |> Enum.find(fn t ->
+        did = Map.get(t, :device_id) || Map.get(t, "device_id")
+        did && String.downcase(to_string(did)) == String.downcase(device_id)
+      end)
+
+    case tap do
+      nil ->
+        json_response(conn, 404, %{error: "no tap configured for device_id '#{device_id}'"})
+
+      tap ->
+        keg_id = Map.get(tap, :keg_id) || Map.get(tap, "keg_id")
+        keg = if keg_id, do: KegData.get(keg_id), else: %{}
+        keg = keg || %{}
+
+        # max_keg_volume is the total full weight in kg (Plaato pin 76)
+        keg_capacity_kg =
+          case keg[:max_keg_volume] || keg["max_keg_volume"] do
+            nil -> nil
+            v -> parse_float_or_nil(v)
+          end
+
+        # empty_keg_weight is the tare/empty weight in kg (Plaato pin 62)
+        empty_keg_weight_kg =
+          case keg[:empty_keg_weight] || keg["empty_keg_weight"] do
+            nil -> nil
+            v -> parse_float_or_nil(v)
+          end
+
+        # current_weight: prefer weight_raw (pin 53, direct scale reading in kg),
+        # fall back to empty + amount_left converted to kg
+        current_weight_kg =
+          case keg[:weight_raw] || keg["weight_raw"] do
+            nil ->
+              amount_left = parse_float_or_nil(keg[:amount_left] || keg["amount_left"])
+              unit = to_string(keg[:beer_left_unit] || keg["beer_left_unit"] || "")
+
+              beer_kg =
+                cond do
+                  amount_left == nil -> nil
+                  unit in ["litre", "l", "liter"] -> amount_left * 1.0
+                  unit in ["lbs", "lb", "pounds"] -> amount_left * 0.453592
+                  unit in ["gal", "gallon", "gallons"] -> amount_left * 3.78541
+                  true -> amount_left
+                end
+
+              case {empty_keg_weight_kg, beer_kg} do
+                {e, b} when is_float(e) and is_float(b) -> e + b
+                _ -> nil
+              end
+
+            raw ->
+              parse_float_or_nil(raw)
+          end
+
+        handle_image = Map.get(tap, :handle_image) || Map.get(tap, "handle_image")
+
+        logo_url =
+          if handle_image && handle_image != "" do
+            scheme = if conn.scheme == :https, do: "https", else: "http"
+            host = conn.host
+            port = conn.port
+            port_str = if port in [80, 443], do: "", else: ":#{port}"
+            "#{scheme}://#{host}#{port_str}/uploads/tap-handles/#{URI.encode(handle_image)}"
+          else
+            nil
+          end
+
+        beer_name = Map.get(tap, :name) || Map.get(tap, "name") || ""
+        brewery = Map.get(tap, :brewery) || Map.get(tap, "brewery") || ""
+
+        description =
+          [Map.get(tap, :description) || Map.get(tap, "description"),
+           Map.get(tap, :tasting_notes) || Map.get(tap, "tasting_notes")]
+          |> Enum.reject(&(is_nil(&1) || &1 == ""))
+          |> Enum.join(" | ")
+
+        full_name = if brewery != "", do: "#{beer_name} - #{brewery}", else: beer_name
+
+        json_response(conn, 200, %{
+          id: device_id,
+          name: full_name,
+          description: description,
+          logo_url: logo_url,
+          keg_capacity: keg_capacity_kg,
+          empty_keg_weight: empty_keg_weight_kg,
+          current_weight: current_weight_kg,
+          keg_id: keg_id
+        })
+    end
+  end
+
+  # ============================================
+  # Tap Handle Images
+  # ============================================
+
+  get "api/tap-handles" do
+    json_response(conn, 200, BeerDB.all_handles())
+  end
+
+  # Serve uploaded handle images from the persistent data directory
+  get "uploads/tap-handles/:filename" do
+    filename = conn.params["filename"]
+
+    if Regex.match?(~r/^[a-zA-Z0-9_\-]+\.jpg$/i, filename) do
+      path = Path.join(OpenPlaatoKeg.tap_handle_dir(), filename)
+
+      if File.exists?(path) do
+        conn
+        |> put_resp_content_type("image/jpeg")
+        |> send_resp(200, File.read!(path))
+      else
+        json_response(conn, 404, %{error: "not_found"})
+      end
+    else
+      json_response(conn, 400, %{error: "invalid_filename"})
+    end
+  end
+
+  post "api/tap-handles/upload" do
+    case conn.params["image"] do
+      %Plug.Upload{filename: original_name, path: temp_path} ->
+        fname_lower = String.downcase(original_name)
+
+        cond do
+          not String.ends_with?(fname_lower, ".jpg") ->
+            json_response(conn, 400, %{error: "Only .jpg files are allowed"})
+
+          true ->
+            content = File.read!(temp_path)
+
+            case jpeg_dimensions(content) do
+              {200, 200} ->
+                safe_name = sanitize_filename(fname_lower)
+                dest = Path.join(OpenPlaatoKeg.tap_handle_dir(), safe_name)
+                File.cp!(temp_path, dest)
+                BeerDB.put_handle(safe_name, %{uploaded_at: DateTime.utc_now() |> to_string()})
+                json_response(conn, 200, %{status: "ok", filename: safe_name})
+
+              {w, h} ->
+                json_response(conn, 400, %{error: "Image must be exactly 200×200 px (got #{w}×#{h})"})
+
+              nil ->
+                json_response(conn, 400, %{error: "Could not read JPEG dimensions — ensure file is a valid JPEG"})
+            end
+        end
+
+      _ ->
+        json_response(conn, 400, %{error: "No image file provided (field name must be 'image')"})
+    end
+  end
+
+  post "api/tap-handles/:filename/delete" do
+    filename = conn.params["filename"]
+
+    if Regex.match?(~r/^[a-zA-Z0-9_\-]+\.jpg$/i, filename) do
+      File.rm(Path.join(OpenPlaatoKeg.tap_handle_dir(), filename))
+      BeerDB.delete_handle(filename)
+      json_response(conn, 200, %{status: "ok"})
+    else
+      json_response(conn, 400, %{error: "invalid_filename"})
+    end
+  end
+
+  # ============================================
+  # Beverage Library
+  # ============================================
+
+  get "api/beverages" do
+    json_response(conn, 200, BeverageDB.all())
+  end
+
+  get "api/beverages/:id" do
+    case BeverageDB.get(conn.params["id"]) do
+      nil -> json_response(conn, 404, %{error: "not_found"})
+      bev -> json_response(conn, 200, bev)
+    end
+  end
+
+  post "api/beverages/:id" do
+    id = conn.params["id"]
+    p = conn.body_params || %{}
+
+    data = %{
+      name:                to_string(p["name"] || ""),
+      brewery:             to_string(p["brewery"] || ""),
+      style:               to_string(p["style"] || ""),
+      abv:                 to_string(p["abv"] || ""),
+      ibu:                 to_string(p["ibu"] || ""),
+      color:               to_string(p["color"] || "#c9a849"),
+      description:         to_string(p["description"] || ""),
+      tasting_notes:       to_string(p["tasting_notes"] || ""),
+      og:                  to_string(p["og"] || ""),
+      fg:                  to_string(p["fg"] || ""),
+      srm:                 to_string(p["srm"] || ""),
+      source:              to_string(p["source"] || "manual"),
+      brewfather_batch_id: to_string(p["brewfather_batch_id"] || ""),
+      created_at:          to_string(p["created_at"] || DateTime.utc_now())
+    }
+
+    BeverageDB.put(id, data)
+    json_response(conn, 200, %{status: "ok", id: id})
+  end
+
+  post "api/beverages/:id/delete" do
+    BeverageDB.delete(conn.params["id"])
+    json_response(conn, 200, %{status: "ok"})
+  end
+
+  # ============================================
+  # Brewfather API credentials + batch import
+  # ============================================
+
+  get "api/config/brewfather" do
+    user_id = OpenPlaatoKeg.AppConfig.get(:brewfather_user_id, "")
+    configured = is_binary(user_id) && user_id != ""
+    json_response(conn, 200, %{configured: configured})
+  end
+
+  post "api/config/brewfather" do
+    p = conn.body_params || %{}
+    user_id = to_string(p["user_id"] || "") |> String.trim()
+    api_key  = to_string(p["api_key"] || "") |> String.trim()
+
+    OpenPlaatoKeg.AppConfig.put(:brewfather_user_id, user_id)
+    OpenPlaatoKeg.AppConfig.put(:brewfather_api_key, api_key)
+
+    json_response(conn, 200, %{status: "ok", configured: user_id != ""})
+  end
+
+  get "api/brewfather/batches" do
+    user_id = OpenPlaatoKeg.AppConfig.get(:brewfather_user_id, "")
+    api_key  = OpenPlaatoKeg.AppConfig.get(:brewfather_api_key, "")
+
+    if user_id == "" || api_key == "" do
+      json_response(conn, 400, %{error: "no_credentials"})
+    else
+      case OpenPlaatoKeg.BrewfatherApi.fetch_batches(user_id, api_key) do
+        {:ok, batches} ->
+          simplified = Enum.map(batches, fn b ->
+            %{
+              id:     b["_id"],
+              name:   b["name"] || get_in(b, ["recipe", "name"]) || "",
+              style:  get_in(b, ["recipe", "style", "name"]) || "",
+              abv:    b["measuredAbv"] || b["estimatedAbv"],
+              status: b["status"] || ""
+            }
+          end)
+          json_response(conn, 200, simplified)
+
+        {:error, reason} ->
+          json_response(conn, 502, %{error: reason})
+      end
+    end
+  end
+
+  post "api/brewfather/import/:batch_id" do
+    batch_id = conn.params["batch_id"]
+    user_id  = OpenPlaatoKeg.AppConfig.get(:brewfather_user_id, "")
+    api_key  = OpenPlaatoKeg.AppConfig.get(:brewfather_api_key, "")
+
+    if user_id == "" || api_key == "" do
+      json_response(conn, 400, %{error: "no_credentials"})
+    else
+      case OpenPlaatoKeg.BrewfatherApi.fetch_batches(user_id, api_key) do
+        {:ok, batches} ->
+          case Enum.find(batches, fn b -> b["_id"] == batch_id end) do
+            nil ->
+              json_response(conn, 404, %{error: "batch_not_found"})
+
+            batch ->
+              bev_data =
+                batch
+                |> OpenPlaatoKeg.BrewfatherApi.batch_to_beverage()
+                |> Map.put(:created_at, to_string(DateTime.utc_now()))
+
+              new_id = BeverageDB.generate_id()
+              BeverageDB.put(new_id, bev_data)
+              json_response(conn, 200, %{status: "ok", id: new_id})
+          end
+
+        {:error, reason} ->
+          json_response(conn, 502, %{error: reason})
+      end
+    end
+  end
+
+  # ============================================
   # Other Endpoints
   # ============================================
 
@@ -619,4 +966,54 @@ defmodule OpenPlaatoKeg.HttpRouter do
 
   defp derive_temperature_unit("2"), do: "°F"
   defp derive_temperature_unit(_),   do: "°C"
+
+  defp parse_int_or_nil(nil), do: nil
+  defp parse_int_or_nil(v) do
+    case Integer.parse(to_string(v)) do
+      {i, _} -> i
+      :error -> nil
+    end
+  end
+
+  defp parse_float_or_nil(nil), do: nil
+  defp parse_float_or_nil(v) do
+    case Float.parse(to_string(v)) do
+      {f, _} -> f
+      :error -> nil
+    end
+  end
+
+  defp nilify_empty(nil), do: nil
+  defp nilify_empty(""), do: nil
+  defp nilify_empty(v), do: to_string(v)
+
+  defp sanitize_filename(name) do
+    name
+    |> String.replace(~r/[^a-z0-9_\-\.]/, "_")
+    |> String.replace(~r/_+/, "_")
+  end
+
+  # Parse JPEG image dimensions from raw binary data.
+  # Returns {width, height} or nil if not a valid JPEG or SOF not found.
+  defp jpeg_dimensions(<<0xFF, 0xD8, rest::binary>>), do: find_jpeg_sof(rest)
+  defp jpeg_dimensions(_), do: nil
+
+  @sof_markers [0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF]
+
+  # SOF marker: precision(1) height(2) width(2)
+  defp find_jpeg_sof(<<0xFF, m, _size::big-16, _prec, h::big-16, w::big-16, _::binary>>)
+       when m in @sof_markers,
+       do: {w, h}
+
+  # Non-SOF segment: skip payload and recurse
+  defp find_jpeg_sof(<<0xFF, _m, size::big-16, rest::binary>>) when size >= 2 do
+    skip = size - 2
+
+    if byte_size(rest) >= skip do
+      <<_::binary-size(skip), next::binary>> = rest
+      find_jpeg_sof(next)
+    end
+  end
+
+  defp find_jpeg_sof(_), do: nil
 end
