@@ -41,6 +41,9 @@
             </div>
           </div>
         </div>
+        <div class="navbar-end">
+          <span class="navbar-item" id="serverVersion" style="font-size:0.75rem;opacity:0.5;"></span>
+        </div>
       </div>
     </nav>
   </div>
@@ -69,6 +72,12 @@
           el.classList.toggle('is-active');
         })
       );
+
+      // Server version
+      fetch('/api/alive')
+        .then(r => r.json())
+        .then(d => { if (d.version) document.getElementById('serverVersion').textContent = 'v' + d.version; })
+        .catch(() => {});
 
       // Configure dropdown (click to toggle on desktop; hover handled by CSS)
       function toggleDropdown(e) {

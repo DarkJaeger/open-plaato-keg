@@ -924,7 +924,8 @@ defmodule OpenPlaatoKeg.HttpRouter do
   end
 
   get "/api/alive" do
-    send_resp(conn, 200, "1")
+    version = Application.spec(:open_plaato_keg, :vsn) |> to_string()
+    json_response(conn, 200, %{status: "ok", version: version})
   end
 
   match _ do
