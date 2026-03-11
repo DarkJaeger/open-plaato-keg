@@ -7,6 +7,7 @@ Supports:
 - **Plaato Keg** — scale-based keg monitor with pour detection, temperature, and calibration
 - **Plaato Airlock** — fermentation sensor with bubble count (BPM) and temperature
 - **Generic airlocks** — any device that can POST to `/api/airlocks/:id/data`
+- **Android companion app** — native app for monitoring kegs and airlocks from your phone ([open-plaato-keg-android](https://github.com/DarkJaeger/open-plaato-keg-android))
 
 ## Why this exists?
 
@@ -38,6 +39,7 @@ graph LR
     B --> F[BarHelper];
     B --> H[Grainfather];
     B --> I[Brewfather];
+    B <--> J[Android App];
 ```
 
 ## Setup
@@ -85,7 +87,7 @@ The Plaato Airlock uses the same Blynk TCP protocol as the Keg, connecting to th
 | V100 | `bubbles_per_min` | Cumulative bubble count (BPM derived from delta between readings) |
 | V101 | `temperature` | Fermentation temperature |
 
-Once connected, the airlock appears in the **Airlocks** section of `/index.html` and `/setup.html`.
+Once connected, the airlock appears in the **Airlocks** section of the web UI.
 
 ## Deployment
 
@@ -235,21 +237,72 @@ Both modes can be enabled simultaneously.
 
 ## Integrations
 
-### Web Companion
+### Web UI
 
-### `/index.html`
+The web UI is served on the configured HTTP port. All pages update in real time via WebSocket.
 
-* Displays keg and airlock cards in real time with WebSocket updates
-* Keg cards show: keg label, beer style, keg date, ABV, temperature, pouring status, last pour (converted to oz/ml/g), and remaining volume
-* Keg cards are displayed two-per-row for a wider, easier-to-read layout
-* Airlock cards show temperature and bubbles per minute (BPM)
+#### `/index.html` — Tap List
 
-### `/setup.html`
+Displays your configured tap list with live keg data:
+- Tap cards show: tap name, beer name and brewery, keg label, pour status, last pour amount, and remaining volume with progress bar
+- Tap handle images are shown if configured
+- Links to the tap setup page for editing
 
-* **Kegs tab**: Configure and control your kegs — set units (metric/imperial with dynamic unit labels), calibration, empty keg weight, beer information, keg label, and view system status; send commands directly to connected kegs
-* **Airlocks tab**: Set a label for each airlock (e.g. "Primary", "Secondary") and configure Grainfather and Brewfather integration
+#### `/taplist-setup.html` — Tap Setup
+
+Configure your tap list:
+- Create and edit taps — assign a name, keg, brewery, beer style, description, tasting notes, and ABV
+- Load beer details from the beverage library
+- Upload and assign tap handle images
+
+#### `/setup.html` — Keg Setup
+
+Configure and control connected kegs:
+- Set units (metric/imperial), measure mode (weight/volume), sensitivity, and keg mode
+- Calibrate the scale, set empty keg weight, and adjust temperature offset
+- Set beer information (style, date, OG, FG, ABV) and a friendly keg label
+- View live keg status
+
+#### `/airlock-setup.html` — Airlock Setup
+
+Configure airlocks and fermentation integrations:
+- Enable/disable airlock support
+- Set a friendly label per airlock device
+- Configure [Grainfather](#grainfather-optional) and [Brewfather](#brewfather-optional) forwarding per airlock
+
+#### `/beverages.html` — Beverage Library
+
+Manage a library of beers and beverages to reuse across tap setups:
+- Add, edit, and delete beverages with name, brewery, style, ABV, IBU, OG, FG, SRM color, description, and tasting notes
+- Import directly from Brewfather batches (requires Brewfather credentials in Settings)
+
+### Android Companion App
+
+A native Android app is available at [open-plaato-keg-android](https://github.com/DarkJaeger/open-plaato-keg-android).
+
+Features:
+- Live tap list with keg data updated via WebSocket
+- Keg scale configuration and calibration
+- Airlock monitoring with BPM and temperature
+- Beverage library management with Brewfather batch import
+- Pour notifications — fires a local notification when a pour is detected (configurable, ≥ 5 oz threshold to suppress scale noise)
+- Settings for server URL, airlock support, and Brewfather credentials
 
 ### HTTP REST API
+
+#### `/api/config`
+
+* **Method:** `GET`
+* **Description:** Returns the current server-side app configuration.
+* **Response:**
+  ```json
+  { "airlock_enabled": true }
+  ```
+
+#### `POST /api/config/airlock-enabled`
+
+* **Description:** Enable or disable Plaato Airlock support.
+* **Body:** `{ "enabled": true }`
 
 ### `/api/kegs`
 
@@ -338,51 +391,7 @@ Both modes can be enabled simultaneously.
 * **Description:** Retrieves details for a specific keg.
 * **Path Parameter:**
     *  `keg_id`: The unique ID of the keg.
-* **Response:** A JSON object representing the keg.
-    * **Example Response:**
-       ```json
-        {
-            "firmware_version": "2.0.10a",
-            "chip_temperature_string": "74.44°C",
-            "max_temperature": "30.000",
-            "min_temperature": "0.000",
-            "leak_detection": "0",
-            "volume_unit": "litre",
-            "wifi_signal_strength": "98",
-            "temperature_unit": "°C",
-            "beer_left_unit": "litre",
-            "keg_temperature_string": "22.87°C",
-            "fg": "1010",
-            "og": "1050",
-            "last_pour": "0.000",
-            "keg_temperature": "22.875",
-            "is_pouring": "255",
-            "percent_of_beer_left": "12.000",
-            "last_pour_string": "0.04L",
-            "temperature_offset": "-7.500",
-            "measure_unit": "2",
-            "max_keg_volume": "18.812",
-            "empty_keg_weight": "0.000",
-            "amount_left": "3.802",
-            "unit": "1",
-            "internal": {
-              "ver": "2.0.10a",
-              "tmpl": "TMPL57889",
-              "h-beat": "20",
-              "fw": "2.0.10a",
-              "dev": "ESP32",
-              "build": "Jul 20 2020 12:31:35",
-              "buff-in": "1024"
-            },
-            "id": "00000000000000000000000000000001",
-            "my_beer_style": "IPA",
-            "my_keg_date": "12.01.2025",
-            "my_og": "1.050",
-            "my_fg": "1.010",
-            "my_abv": "5.25"
-        }
-       ```
-* **Fields in Response:** Same as `/api/kegs`
+* **Response:** A JSON object representing the keg (same fields as `/api/kegs`).
 
 ### `/api/kegs/devices`
 
@@ -414,6 +423,7 @@ Send commands to a connected keg:
 | `POST /api/kegs/:id/max-keg-volume` | `{"value": 19.5}` | Set max keg volume |
 | `POST /api/kegs/:id/temperature-offset` | `{"value": -2.5}` | Adjust temperature calibration offset |
 | `POST /api/kegs/:id/calibrate-known-weight` | `{"value": 5000}` | Calibrate with known weight (grams) |
+| `POST /api/kegs/:id/reset-last-pour` | — | Reset last pour value to zero |
 | `POST /api/kegs/:id/unit` | `{"value": "metric"\|"us"}` | Set unit system (immediately updates display units) |
 | `POST /api/kegs/:id/measure-unit` | `{"value": "weight"\|"volume"}` | Set measure mode (immediately updates display units) |
 | `POST /api/kegs/:id/keg-mode` | `{"value": "beer"\|"co2"}` | Set keg mode *(experimental)* |
@@ -424,6 +434,7 @@ Send commands to a connected keg:
 | `POST /api/kegs/:id/og` | `{"value": "1.050"}` | Set original gravity (stored locally) |
 | `POST /api/kegs/:id/fg` | `{"value": "1.010"}` | Set final gravity (stored locally) |
 | `POST /api/kegs/:id/abv` | `{"og": "1.050", "fg": "1.010"}` | Calculate & store ABV |
+| `POST /api/kegs/:id/delete` | — | Remove a keg's stored data |
 
 ### Airlock REST API
 
@@ -477,6 +488,120 @@ Send commands to a connected keg:
 * `url` is the per-airlock Grainfather endpoint URL (found in your Grainfather session). Sending is skipped if the URL is not set.
 * When enabled, airlock data is forwarded to the Grainfather community web app at most once every 15 minutes (requires temperature; BPM is optional).
 
+#### `/api/airlocks/:id/brewfather`
+
+* **Method:** `POST`
+* **Description:** Configure Brewfather custom stream forwarding for this airlock.
+* **Body:**
+  ```json
+  { "enabled": true, "unit": "celsius", "specific_gravity": "1.050", "og": "1.060", "batch_volume": "20.0", "url": "https://log.brewfather.net/stream?id=..." }
+  ```
+* `url` is the per-airlock Brewfather custom stream URL (found in your Brewfather batch). Sending is skipped if the URL is not set.
+* When enabled, temperature and BPM data are forwarded to Brewfather at most once every 15 minutes.
+
+### Tap List API
+
+#### `/api/taps`
+
+* **Method:** `GET`
+* **Description:** Returns all configured taps.
+* **Response:** Array of tap objects.
+
+#### `/api/taps/:id`
+
+* **Method:** `GET` / `POST`
+* **Description:** Get or save a tap. Use `id = "new"` to create a new tap.
+* **Body (POST):**
+  ```json
+  {
+    "name": "Basement Tap",
+    "tap_number": 1,
+    "keg_id": "00000000000000000000000000000001",
+    "brewery": "Home Brew Co",
+    "description": "A hoppy IPA",
+    "tasting_notes": "Citrus, pine",
+    "abv": "5.5",
+    "handle_image": "my-tap.jpg"
+  }
+  ```
+
+#### `/api/taps/:id/delete`
+
+* **Method:** `POST`
+* **Description:** Delete a tap.
+
+#### `/api/tap-handles`
+
+* **Method:** `GET`
+* **Description:** Returns a list of uploaded tap handle image filenames.
+
+#### `POST /api/tap-handles/upload`
+
+* **Description:** Upload a tap handle image (multipart form, field `file`). Returns the stored filename.
+
+#### `POST /api/tap-handles/:filename/delete`
+
+* **Description:** Delete an uploaded tap handle image.
+
+#### `GET /uploads/tap-handles/:filename`
+
+* **Description:** Serves uploaded tap handle images.
+
+### Beverage Library API
+
+#### `/api/beverages`
+
+* **Method:** `GET`
+* **Description:** Returns all beverages in the library.
+* **Response:** Array of beverage objects.
+
+#### `/api/beverages/:id`
+
+* **Method:** `GET` / `POST`
+* **Description:** Get or save a beverage. Use `id = "new"` to create.
+* **Body (POST):**
+  ```json
+  {
+    "name": "Session IPA",
+    "brewery": "Home Brew Co",
+    "style": "IPA",
+    "abv": 4.5,
+    "ibu": 40,
+    "og": 1.048,
+    "fg": 1.010,
+    "srm": 6,
+    "color": "#f5a623",
+    "description": "A light, hoppy IPA",
+    "tasting_notes": "Citrus, floral"
+  }
+  ```
+
+#### `POST /api/beverages/:id/delete`
+
+* **Description:** Delete a beverage from the library.
+
+### Brewfather Import API
+
+#### `GET /api/config/brewfather`
+
+* **Description:** Returns whether Brewfather credentials are configured.
+* **Response:** `{ "configured": true }`
+
+#### `POST /api/config/brewfather`
+
+* **Description:** Save Brewfather API credentials (stored server-side).
+* **Body:** `{ "user_id": "abc123", "api_key": "your-api-key" }`
+
+#### `GET /api/brewfather/batches`
+
+* **Description:** Fetches your Brewfather batch list (requires credentials configured).
+* **Response:** Array of batch summaries: `[{ "id": "...", "name": "...", "style": "...", "status": "..." }]`
+
+#### `POST /api/brewfather/import/:batch_id`
+
+* **Description:** Import a Brewfather batch as a beverage in the local library.
+* **Response:** The newly created beverage object.
+
 ### `/api/metrics`
 
 * **Method:** `GET`
@@ -506,7 +631,7 @@ plaato_keg{id="00000000000000000000000000000001",type="is_pouring"} 0.0
 
 * **Method:** `GET`
 * **Description:** Returns if webserver is started
-* **Response**: `200 OK` with body "1"
+* **Response**: `200 OK` with body containing server version string
 
 ### WebSocket
 
@@ -565,3 +690,12 @@ Environment variables to set:
     *  "plaato-auth-key:barhelper-custom-keg-monitor-id,plaato-auth-key:barhelper-custom-keg-monitor-id"
     * eg. "00000000000000000000000000000001:custom-1"
 
+### Grainfather (optional)
+
+Per-airlock Grainfather forwarding sends temperature, BPM, and specific gravity to the Grainfather community web app. Configure via `/api/airlocks/:id/grainfather` or the Airlock Setup page. Data is forwarded at most once every 15 minutes per airlock.
+
+### Brewfather (optional)
+
+Per-airlock Brewfather forwarding sends temperature, BPM, specific gravity, and other fermentation data to a Brewfather custom stream URL. Configure via `/api/airlocks/:id/brewfather` or the Airlock Setup page. Data is forwarded at most once every 15 minutes per airlock.
+
+Brewfather batch import allows you to pull batch details from Brewfather into the local beverage library. Configure credentials via the Settings page or `POST /api/config/brewfather`, then browse and import batches via `GET /api/brewfather/batches` and `POST /api/brewfather/import/:batch_id`.
