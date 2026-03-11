@@ -16,7 +16,13 @@
       "Bash(gh release:*)",
       "Bash(gh workflow:*)",
       "Bash(xargs grep:*)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(mix test:*)",
+      "Bash(~/.asdf/shims/mix test:*)",
+      "Bash(cmd:*)",
+      "Bash(echo $PATH)",
+      "Bash(printenv PATH:*)",
+      "Bash(./gradlew assembleDebug:*)"
     ]
   }
 }
