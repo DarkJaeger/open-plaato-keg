@@ -29,13 +29,6 @@ defmodule OpenPlaatoKeg.Models.KegData do
     end
   end
 
-  # unit "1" = metric, "2" = US; measure_unit "1" = weight, "2" = volume
-  defp derive_beer_left_unit("1", "1"), do: "kg"
-  defp derive_beer_left_unit("1", _),   do: "litre"
-  defp derive_beer_left_unit("2", "1"), do: "lbs"
-  defp derive_beer_left_unit("2", _),   do: "gal"
-  defp derive_beer_left_unit(_, _),     do: "litre"
-
   def devices do
     query = {{:_, :id}, :"$1"}
 
@@ -57,4 +50,11 @@ defmodule OpenPlaatoKeg.Models.KegData do
     |> List.flatten()
     |> Enum.each(fn key -> :dets.delete(:keg_data, {id, key}) end)
   end
+
+  # unit "1" = metric, "2" = US; measure_unit "1" = weight, "2" = volume
+  defp derive_beer_left_unit("1", "1"), do: "kg"
+  defp derive_beer_left_unit("1", _),   do: "litre"
+  defp derive_beer_left_unit("2", "1"), do: "lbs"
+  defp derive_beer_left_unit("2", _),   do: "gal"
+  defp derive_beer_left_unit(_, _),     do: "litre"
 end
