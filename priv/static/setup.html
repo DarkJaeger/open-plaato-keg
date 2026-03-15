@@ -692,7 +692,7 @@
       });
 
       // WebSocket connection for real-time updates
-      const socket = new WebSocket(`ws://${window.location.host}/ws`);
+      const socket = new WebSocket('/ws');
 
       socket.addEventListener("open", () => {
         console.log("WebSocket connected for setup page");

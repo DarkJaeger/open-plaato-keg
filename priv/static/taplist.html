@@ -478,7 +478,7 @@
 
     // ── WebSocket ──────────────────────────────────
     function connectWS() {
-      const ws = new WebSocket(`ws://${location.host}/ws`);
+      const ws = new WebSocket('/ws');
       ws.addEventListener('message', ev => {
         try {
           const data = JSON.parse(ev.data);
