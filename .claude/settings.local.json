@@ -22,7 +22,8 @@
       "Bash(cmd:*)",
       "Bash(echo $PATH)",
       "Bash(printenv PATH:*)",
-      "Bash(./gradlew assembleDebug:*)"
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(find /c/users/rig2/Documents/Github/open-plaato-keg -name \"*.kt\" -o -name \"*.gradle\" -o -name \"build.gradle.kts\" 2>/dev/null | head -20)"
     ]
   }
 }

@@ -649,31 +649,15 @@ defmodule OpenPlaatoKeg.HttpRouter do
             v -> parse_float_or_nil(v)
           end
 
-        # current_weight: prefer weight_raw (pin 53, direct scale reading in kg),
-        # fall back to empty + amount_left converted to kg
+        # current_weight: prefer weight_raw (pin 53) when in a plausible kg range;
+        # otherwise use empty_keg_weight + amount_left converted to kg.
+        # Some firmware sends weight_raw in other units or invalid values (e.g. negative).
         current_weight_kg =
-          case keg[:weight_raw] || keg["weight_raw"] do
-            nil ->
-              amount_left = parse_float_or_nil(keg[:amount_left] || keg["amount_left"])
-              unit = to_string(keg[:beer_left_unit] || keg["beer_left_unit"] || "")
-
-              beer_kg =
-                cond do
-                  amount_left == nil -> nil
-                  unit in ["litre", "l", "liter"] -> amount_left * 1.0
-                  unit in ["lbs", "lb", "pounds"] -> amount_left * 0.453592
-                  unit in ["gal", "gallon", "gallons"] -> amount_left * 3.78541
-                  true -> amount_left
-                end
-
-              case {empty_keg_weight_kg, beer_kg} do
-                {e, b} when is_float(e) and is_float(b) -> e + b
-                _ -> nil
-              end
-
-            raw ->
-              parse_float_or_nil(raw)
-          end
+          compute_get_keg_current_weight(
+            keg[:weight_raw] || keg["weight_raw"],
+            keg,
+            empty_keg_weight_kg
+          )
 
         handle_image = Map.get(tap, :handle_image) || Map.get(tap, "handle_image")
 
@@ -967,6 +951,37 @@ defmodule OpenPlaatoKeg.HttpRouter do
 
   defp derive_temperature_unit("2"), do: "°F"
   defp derive_temperature_unit(_),   do: "°C"
+
+  # Plausible keg total weight range in kg (0–200). weight_raw outside this is ignored.
+  @get_keg_weight_kg_max 200.0
+
+  defp compute_get_keg_current_weight(weight_raw, keg, empty_keg_weight_kg) do
+    fallback =
+      (fn ->
+        amount_left = parse_float_or_nil(keg[:amount_left] || keg["amount_left"])
+        unit = to_string(keg[:beer_left_unit] || keg["beer_left_unit"] || "")
+
+        beer_kg =
+          cond do
+            amount_left == nil -> nil
+            unit in ["litre", "l", "liter"] -> amount_left * 1.0
+            unit in ["lbs", "lb", "pounds"] -> amount_left * 0.453592
+            unit in ["gal", "gallon", "gallons"] -> amount_left * 3.78541
+            true -> amount_left
+          end
+
+        case {empty_keg_weight_kg, beer_kg} do
+          {e, b} when is_float(e) and is_float(b) -> e + b
+          _ -> nil
+        end
+      end).()
+
+    case parse_float_or_nil(weight_raw) do
+      nil -> fallback
+      w when w < 0 or w > @get_keg_weight_kg_max -> fallback
+      w -> w
+    end
+  end
 
   defp parse_int_or_nil(nil), do: nil
   defp parse_int_or_nil(v) do
