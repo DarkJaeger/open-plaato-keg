@@ -262,10 +262,11 @@
               <div class="column">
                 <div class="field">
                   <label class="label">Keg Date <span style="color: #ff3860;">*</span></label>
+                  <p class="help" id="kegDateHelp">Day.Month.Year</p>
                   <div class="control">
                     <div class="field has-addons">
                       <div class="control is-expanded">
-                        <input class="input" type="text" id="kegDate" placeholder="e.g., 12.01.2025" />
+                        <input class="input" type="text" id="kegDate" placeholder="e.g. 25.03.2025" />
                       </div>
                       <div class="control">
                         <button class="button is-primary" onclick="sendKegDate()">Set</button>
@@ -688,6 +689,7 @@
           document.getElementById("currentSettings").innerHTML =
             '<p class="has-text-grey">Select a keg to view current settings</p>';
           clearActiveButtons();
+          updateUnitLabels("1");
         }
       });
 
@@ -938,6 +940,11 @@
         set("knownWeightUnit",    isUS ? "lbs" : "kg");
         set("tempOffsetUnit",     isUS ? "°F"  : "°C");
         set("maxVolumeUnit",      isUS ? "gal" : "L");
+        // Keg date format: metric = Day.Month.Year, imperial = Month.Day.Year
+        const kegDateEl = document.getElementById("kegDate");
+        const kegDateHelp = document.getElementById("kegDateHelp");
+        if (kegDateEl) kegDateEl.placeholder = isUS ? "e.g. 03.25.2025" : "e.g. 25.03.2025";
+        if (kegDateHelp) kegDateHelp.textContent = isUS ? "Month.Day.Year" : "Day.Month.Year";
       }
 
       function setUnit(value) {
