@@ -688,9 +688,9 @@ defmodule OpenPlaatoKeg.HttpRouter do
           name: full_name,
           description: description,
           logo_url: logo_url,
-          keg_capacity: keg_capacity_kg,
-          empty_keg_weight: empty_keg_weight_kg,
-          current_weight: current_weight_kg,
+          keg_capacity: round_kg(keg_capacity_kg),
+          empty_keg_weight: round_kg(empty_keg_weight_kg),
+          current_weight: round_kg(current_weight_kg),
           keg_id: keg_id
         })
     end
@@ -955,24 +955,20 @@ defmodule OpenPlaatoKeg.HttpRouter do
   # Plausible keg total weight range in kg (0–200). weight_raw outside this is ignored.
   @get_keg_weight_kg_max 200.0
 
-  defp compute_get_keg_current_weight(weight_raw, keg, empty_keg_weight_kg) do
+  # current_weight for open-tap is the scale reading in kg (beer weight when scale is tare'd).
+  # When weight_raw is invalid, use amount_left converted to kg (beer remaining), not total keg weight.
+  defp compute_get_keg_current_weight(weight_raw, keg, _empty_keg_weight_kg) do
     fallback =
       (fn ->
         amount_left = parse_float_or_nil(keg[:amount_left] || keg["amount_left"])
         unit = to_string(keg[:beer_left_unit] || keg["beer_left_unit"] || "")
 
-        beer_kg =
-          cond do
-            amount_left == nil -> nil
-            unit in ["litre", "l", "liter"] -> amount_left * 1.0
-            unit in ["lbs", "lb", "pounds"] -> amount_left * 0.453592
-            unit in ["gal", "gallon", "gallons"] -> amount_left * 3.78541
-            true -> amount_left
-          end
-
-        case {empty_keg_weight_kg, beer_kg} do
-          {e, b} when is_float(e) and is_float(b) -> e + b
-          _ -> nil
+        cond do
+          amount_left == nil -> nil
+          unit in ["litre", "l", "liter"] -> amount_left * 1.0
+          unit in ["lbs", "lb", "pounds"] -> amount_left * 0.453592
+          unit in ["gal", "gallon", "gallons"] -> amount_left * 3.78541
+          true -> amount_left
         end
       end).()
 
@@ -998,6 +994,9 @@ defmodule OpenPlaatoKeg.HttpRouter do
       :error -> nil
     end
   end
+
+  defp round_kg(nil), do: nil
+  defp round_kg(w) when is_number(w), do: Float.round(w, 2)
 
   defp nilify_empty(nil), do: nil
   defp nilify_empty(""), do: nil
