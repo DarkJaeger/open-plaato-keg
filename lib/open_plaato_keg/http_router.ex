@@ -649,9 +649,9 @@ defmodule OpenPlaatoKeg.HttpRouter do
             v -> parse_float_or_nil(v)
           end
 
-        # current_weight: prefer weight_raw (pin 53) when in a plausible kg range;
-        # otherwise use empty_keg_weight + amount_left converted to kg.
-        # Some firmware sends weight_raw in other units or invalid values (e.g. negative).
+        # current_weight: always total weight in kg so open-tap can compute beer left =
+        # current_weight - empty_keg_weight. Uses weight_raw when valid (then + empty to get
+        # total, since scale often reports net); else fallback = empty + amount_left in kg.
         current_weight_kg =
           compute_get_keg_current_weight(
             keg[:weight_raw] || keg["weight_raw"],
@@ -952,30 +952,45 @@ defmodule OpenPlaatoKeg.HttpRouter do
   defp derive_temperature_unit("2"), do: "°F"
   defp derive_temperature_unit(_),   do: "°C"
 
-  # Plausible keg total weight range in kg (0–200). weight_raw outside this is ignored.
+  # Plausible net (beer) weight in kg (0–200). weight_raw outside this is ignored.
   @get_keg_weight_kg_max 200.0
 
-  # current_weight for open-tap is the scale reading in kg (beer weight when scale is tare'd).
-  # When weight_raw is invalid, use amount_left converted to kg (beer remaining), not total keg weight.
-  defp compute_get_keg_current_weight(weight_raw, keg, _empty_keg_weight_kg) do
-    fallback =
+  # Always return total weight (empty + beer) for open-tap so device can compute
+  # beer left = current_weight - empty_keg_weight. When weight_raw is valid we treat it
+  # as scale/net (beer only) and add empty_keg_weight to get total; when invalid we use
+  # fallback total = empty_keg_weight + amount_left converted to kg.
+  defp compute_get_keg_current_weight(weight_raw, keg, empty_keg_weight_kg) do
+    fallback_total =
       (fn ->
         amount_left = parse_float_or_nil(keg[:amount_left] || keg["amount_left"])
         unit = to_string(keg[:beer_left_unit] || keg["beer_left_unit"] || "")
 
-        cond do
-          amount_left == nil -> nil
-          unit in ["litre", "l", "liter"] -> amount_left * 1.0
-          unit in ["lbs", "lb", "pounds"] -> amount_left * 0.453592
-          unit in ["gal", "gallon", "gallons"] -> amount_left * 3.78541
-          true -> amount_left
+        beer_kg =
+          cond do
+            amount_left == nil -> nil
+            unit in ["litre", "l", "liter"] -> amount_left * 1.0
+            unit in ["lbs", "lb", "pounds"] -> amount_left * 0.453592
+            unit in ["gal", "gallon", "gallons"] -> amount_left * 3.78541
+            true -> amount_left
+          end
+
+        case {empty_keg_weight_kg, beer_kg} do
+          {e, b} when is_float(e) and is_float(b) -> e + b
+          _ -> nil
         end
       end).()
 
     case parse_float_or_nil(weight_raw) do
-      nil -> fallback
-      w when w < 0 or w > @get_keg_weight_kg_max -> fallback
-      w -> w
+      nil ->
+        fallback_total
+      w when w < 0 or w > @get_keg_weight_kg_max ->
+        fallback_total
+      w ->
+        # Scale (pin 53) typically reports net/beer weight when tare'd; add empty for total.
+        case empty_keg_weight_kg do
+          e when is_float(e) -> e + w
+          _ -> fallback_total
+        end
     end
   end
 
