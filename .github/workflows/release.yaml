@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -24,7 +24,7 @@ jobs:
         uses: erlef/setup-beam@v1
         with:
           elixir-version: '1.16'
-          otp-version: '24'
+          otp-version: '26'
 
       - name: Install dependencies
         run: mix deps.get
