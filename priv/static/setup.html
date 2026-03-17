@@ -628,6 +628,25 @@
                 <td><strong>Buffer</strong></td>
                 <td>${data.internal?.["buff-in"] ? data.internal["buff-in"] + " bytes" : "N/A"}</td>
               </tr>
+              <tr>
+                <td><strong>Manual OTA Update</strong></td>
+                <td>
+                  <div class="field has-addons">
+                    <div class="control is-expanded">
+                      <input class="input" type="text" id="otaFirmwarePath"
+                             placeholder="/firmware/PlaatoKegFW_2-0-10a.bin or full https URL" />
+                    </div>
+                    <div class="control">
+                      <button class="button is-danger" type="button" onclick="triggerOtaUpdate()">
+                        Send OTA
+                      </button>
+                    </div>
+                  </div>
+                  <p class="help has-text-danger">
+                    Warning: OTA is at your own risk. Using the wrong firmware can permanently brick the scale.
+                  </p>
+                </td>
+              </tr>
             </tbody>
           </table>
         `;
@@ -962,6 +981,41 @@
 
       function setSensitivity(level) {
         sendCommand("sensitivity", { value: level.toString() });
+      }
+
+      async function triggerOtaUpdate() {
+        const kegId = getSelectedKeg();
+        if (!kegId) {
+          showToast("Select a keg first before sending OTA.", "warning");
+          return;
+        }
+
+        const input = document.getElementById("otaFirmwarePath");
+        const raw = input ? input.value.trim() : "";
+        if (!raw) {
+          showToast("Enter a firmware URL or server path for OTA.", "warning");
+          return;
+        }
+
+        const body =
+          raw.startsWith("http://") || raw.startsWith("https://")
+            ? { url: raw }
+            : { path: raw };
+
+        try {
+          const res = await fetch(`/api/kegs/${encodeURIComponent(kegId)}/ota`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data.error || `HTTP ${res.status}`);
+          }
+          showToast("OTA command sent. The device may reboot if update succeeds.", "info");
+        } catch (err) {
+          showToast(`OTA failed: ${err.message}`, "danger");
+        }
       }
 
     </script>

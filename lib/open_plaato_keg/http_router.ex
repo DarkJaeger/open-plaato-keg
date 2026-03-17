@@ -123,6 +123,49 @@ defmodule OpenPlaatoKeg.HttpRouter do
     end
   end
 
+  post "api/kegs/:id/ota" do
+    keg_id = conn.params["id"]
+    params = conn.body_params || %{}
+
+    url_param = Map.get(params, "url")
+    path_param = Map.get(params, "path")
+
+    url =
+      cond do
+        is_binary(url_param) and url_param != "" ->
+          url_param
+
+        is_binary(path_param) and path_param != "" ->
+          scheme = if conn.scheme == :https, do: "https", else: "http"
+          host = conn.host
+          port = conn.port
+          port_str = if port in [80, 443], do: "", else: ":#{port}"
+          path =
+            if String.starts_with?(path_param, "/"),
+              do: path_param,
+              else: "/" <> path_param
+
+          "#{scheme}://#{host}#{port_str}#{path}"
+
+        true ->
+          nil
+      end
+
+    if is_nil(url) do
+      json_response(conn, 400, %{error: "missing_url_or_path"})
+    else
+      # Manual OTA only. We just send the OTA command; device will decide
+      # whether to download/flash. Wrong firmware can brick the scale.
+      case KegCommander.send_internal_ota(keg_id, url) do
+        :ok ->
+          json_response(conn, 200, %{status: "ok"})
+
+        {:error, reason} ->
+          json_response(conn, 400, %{error: to_string(reason)})
+      end
+    end
+  end
+
   post "api/kegs/:id/calibrate-known-weight" do
     keg_id = conn.params["id"]
     %{"value" => value} = conn.body_params
