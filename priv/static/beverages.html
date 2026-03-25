@@ -376,7 +376,40 @@
       document.getElementById('bevFg').value           = bev.fg || '';
 
       updateActiveSwatch(bev.color || '#c9a849');
+
+      // If ABV is empty, compute it from OG+FG automatically.
+      if (!document.getElementById('bevAbv').value.trim()) {
+        autoCalculateAbv();
+      }
     }
+
+    function parseFullNumber(str) {
+      const s = (str ?? '').toString().trim();
+      if (s === '') return null;
+      // Allow plain decimals (e.g. 1.050, 1.012). Avoid partial parses like "1.05x".
+      if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
+      return parseFloat(s);
+    }
+
+    function autoCalculateAbv() {
+      const og = parseFullNumber(document.getElementById('bevOg').value);
+      const fg = parseFullNumber(document.getElementById('bevFg').value);
+
+      if (og == null || fg == null) {
+        document.getElementById('bevAbv').value = '';
+        return;
+      }
+
+      const abv = (og - fg) * 131.25;
+      const abvRounded = Math.round(abv * 100) / 100;
+      document.getElementById('bevAbv').value = abvRounded.toFixed(2).replace(/\.00$/, '');
+    }
+
+    // Keep ABV in sync while the user types OG/FG
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('bevOg')?.addEventListener('input', autoCalculateAbv);
+      document.getElementById('bevFg')?.addEventListener('input', autoCalculateAbv);
+    });
 
     function closeForm() {
       currentId = null;

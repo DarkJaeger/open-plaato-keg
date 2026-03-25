@@ -243,6 +243,23 @@
               </div>
             </div>
 
+            <div class="field" id="beverageLibraryField">
+              <label class="label">Load from Beverage Library <span class="has-text-grey">(optional)</span></label>
+              <p class="help">Select a stored beverage to auto-fill beer style, keg date, OG, FG, and ABV.</p>
+              <div class="field has-addons">
+                <div class="control is-expanded">
+                  <div class="select is-fullwidth">
+                    <select id="beverageSelect">
+                      <option value="">— select a beverage —</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="control">
+                  <button class="button is-info" onclick="loadFromBeverage()">Load</button>
+                </div>
+              </div>
+            </div>
+
             <div class="columns">
               <div class="column">
                 <div class="field">
@@ -411,6 +428,88 @@
       const kegIdSelect = document.getElementById("kegId");
       const connectionStatus = document.getElementById("connectionStatus");
       let currentKegData = {};
+      let allBeverages = [];
+
+      async function loadBeverages() {
+        try {
+          const res = await fetch("/api/beverages");
+          if (!res.ok) throw new Error(await res.text());
+          allBeverages = await res.json();
+
+          const sel = document.getElementById("beverageSelect");
+          if (!sel) return;
+
+          sel.innerHTML = '<option value="">— select a beverage —</option>';
+          allBeverages.forEach((bev) => {
+            const opt = document.createElement("option");
+            opt.value = bev.id;
+            opt.dataset.beverage = JSON.stringify(bev);
+            opt.textContent = `${bev.name || "Unnamed"}${bev.style ? " · " + bev.style : ""}`;
+            sel.appendChild(opt);
+          });
+        } catch (e) {
+          // Non-fatal: user can still fill fields manually.
+          showToast("Failed to load beverages: " + e.message, "danger");
+        }
+      }
+
+      function parseFullNumber(str) {
+        const s = (str ?? "").toString().trim();
+        if (s === "") return null;
+        // Avoid partial parses like "1.05x".
+        if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
+        return parseFloat(s);
+      }
+
+      function computeAbvFromOgFg(ogStr, fgStr) {
+        const og = parseFullNumber(ogStr);
+        const fg = parseFullNumber(fgStr);
+        if (og == null || fg == null) return "";
+        const abv = (og - fg) * 131.25;
+        const abvRounded = Math.round(abv * 100) / 100;
+        return abvRounded.toFixed(2).replace(/\.00$/, "");
+      }
+
+      function formatTodayKegDate() {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, "0");
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const yyyy = now.getFullYear();
+
+        const help = document.getElementById("kegDateHelp")?.textContent || "";
+        // Mirror updateUnitLabels(): Metric => Day.Month.Year, US => Month.Day.Year
+        // We must not use a loose `includes("Month.")` because Metric text also contains "Month."
+        const isUSFormat = help.trim().startsWith("Month.") || help.includes("Month.Day");
+
+        return isUSFormat ? `${mm}.${dd}.${yyyy}` : `${dd}.${mm}.${yyyy}`;
+      }
+
+      function loadFromBeverage() {
+        const sel = document.getElementById("beverageSelect");
+        if (!sel) return;
+
+        const selectedOpt = sel.options[sel.selectedIndex];
+        if (!selectedOpt || !selectedOpt.dataset.beverage) return;
+
+        const bev = JSON.parse(selectedOpt.dataset.beverage);
+
+        const beerStyleEl = document.getElementById("beerStyle");
+        const kegDateEl = document.getElementById("kegDate");
+        const ogEl = document.getElementById("og");
+        const fgEl = document.getElementById("fg");
+        const abvEl = document.getElementById("abv");
+
+        if (beerStyleEl) beerStyleEl.value = (bev.style || bev.beer_style || "").trim();
+        if (kegDateEl) kegDateEl.value = formatTodayKegDate();
+        if (ogEl) ogEl.value = (bev.og || "").trim();
+        if (fgEl) fgEl.value = (bev.fg || bev.sg || "").trim();
+
+        const abvFromBev = (bev.abv || "").toString().trim();
+        const abvComputed = computeAbvFromOgFg(bev.og, bev.fg);
+        if (abvEl) abvEl.value = abvFromBev || abvComputed || "";
+
+        beerStyleEl?.focus?.();
+      }
 
       // Load connected kegs
       function loadConnectedKegs() {
@@ -740,6 +839,7 @@
 
       loadConnectedKegs();
       setInterval(loadConnectedKegs, 10000);
+      loadBeverages();
 
       function getSelectedKeg() {
         const kegId = kegIdSelect.value;

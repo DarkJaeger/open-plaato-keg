@@ -830,17 +830,37 @@ defmodule OpenPlaatoKeg.HttpRouter do
     id = conn.params["id"]
     p = conn.body_params || %{}
 
+    og_str = to_string(p["og"] || "") |> String.trim()
+    fg_str = to_string(p["fg"] || "") |> String.trim()
+    sg_str = to_string(p["sg"] || "") |> String.trim()
+    # Some users might provide "sg" instead of "fg" (FG = final gravity).
+    fg_input_str = if fg_str != "", do: fg_str, else: sg_str
+
+    abv_str = to_string(p["abv"] || "") |> String.trim()
+    computed_abv_str =
+      if String.trim(abv_str) == "" do
+        with {og, ""} <- Float.parse(og_str),
+             {fg, ""} <- Float.parse(fg_input_str) do
+          abv = (og - fg) * 131.25
+          "#{Float.round(abv, 2)}"
+        else
+          _ -> ""
+        end
+      else
+        ""
+      end
+
     data = %{
       name:                to_string(p["name"] || ""),
       brewery:             to_string(p["brewery"] || ""),
       style:               to_string(p["style"] || ""),
-      abv:                 to_string(p["abv"] || ""),
+      abv:                 if computed_abv_str != "", do: computed_abv_str, else: abv_str,
       ibu:                 to_string(p["ibu"] || ""),
       color:               to_string(p["color"] || "#c9a849"),
       description:         to_string(p["description"] || ""),
       tasting_notes:       to_string(p["tasting_notes"] || ""),
-      og:                  to_string(p["og"] || ""),
-      fg:                  to_string(p["fg"] || ""),
+      og:                  og_str,
+      fg:                  fg_input_str,
       srm:                 to_string(p["srm"] || ""),
       source:              to_string(p["source"] || "manual"),
       brewfather_batch_id: to_string(p["brewfather_batch_id"] || ""),
