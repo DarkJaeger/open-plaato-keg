@@ -854,7 +854,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
       name:                to_string(p["name"] || ""),
       brewery:             to_string(p["brewery"] || ""),
       style:               to_string(p["style"] || ""),
-      abv:                 if computed_abv_str != "", do: computed_abv_str, else: abv_str,
+      abv:                 (if computed_abv_str != "", do: computed_abv_str, else: abv_str),
       ibu:                 to_string(p["ibu"] || ""),
       color:               to_string(p["color"] || "#c9a849"),
       description:         to_string(p["description"] || ""),
