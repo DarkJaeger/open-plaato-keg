@@ -33,23 +33,6 @@ defmodule OpenPlaatoKeg.KegCommander do
   end
 
   @doc """
-  Sends a raw Blynk command binary to a specific keg device.
-  Intended for advanced flows like OTA where we need to use
-  non-hardware commands (e.g. BLYNK_INTERNAL).
-  """
-  defp do_send(keg_id, encoded) do
-    case lookup_socket(keg_id) do
-      {:ok, socket} ->
-        Logger.info("Sending command to keg #{keg_id}")
-        ThousandIsland.Socket.send(socket, encoded)
-
-      {:error, reason} ->
-        Logger.warning("Failed to send command to keg #{keg_id}: #{inspect(reason)}")
-        {:error, reason}
-    end
-  end
-
-  @doc """
   Lookup the socket for a given keg ID from the registry.
   """
   def lookup_socket(keg_id) do
@@ -216,5 +199,22 @@ defmodule OpenPlaatoKeg.KegCommander do
     body = Enum.join(["vr" | pins], "\0")
     msg_id = :rand.uniform(65535)
     BlynkProtocol.encode_command(:hardware_sync, msg_id, body)
+  end
+
+  @doc """
+  Sends a raw Blynk command binary to a specific keg device.
+  Intended for advanced flows like OTA where we need to use
+  non-hardware commands (e.g. BLYNK_INTERNAL).
+  """
+  defp do_send(keg_id, encoded) do
+    case lookup_socket(keg_id) do
+      {:ok, socket} ->
+        Logger.info("Sending command to keg #{keg_id}")
+        ThousandIsland.Socket.send(socket, encoded)
+
+      {:error, reason} ->
+        Logger.warning("Failed to send command to keg #{keg_id}: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 end
