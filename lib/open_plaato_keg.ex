@@ -27,6 +27,13 @@ defmodule OpenPlaatoKeg do
         {:file, String.to_charlist(airlock_path)}
       ])
 
+    # Transfer scales: dumb WiFi scales placed under kegs during transfers from fermenter
+    transfer_scale_path = Path.join(db_folder, "transfer_scale_data.bin")
+    {:ok, _transfer_scale_table} =
+      :dets.open_file(:transfer_scale_data, [
+        {:file, String.to_charlist(transfer_scale_path)}
+      ])
+
     # Beer DB: tap list configuration and tap handle metadata
     beer_db_path = Path.join(db_folder, "beer_db.bin")
     {:ok, _beer_table} = :dets.open_file(:beer_db, [{:file, String.to_charlist(beer_db_path)}])

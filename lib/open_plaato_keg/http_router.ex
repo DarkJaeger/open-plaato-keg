@@ -4,6 +4,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
   alias OpenPlaatoKeg.KegCommander
   alias OpenPlaatoKeg.Metrics
   alias OpenPlaatoKeg.Models.AirlockData
+  alias OpenPlaatoKeg.Models.TransferScaleData
   alias OpenPlaatoKeg.Models.BeerDB
   alias OpenPlaatoKeg.Models.BeverageDB
   alias OpenPlaatoKeg.Models.KegData
@@ -975,6 +976,86 @@ defmodule OpenPlaatoKeg.HttpRouter do
     json_response(conn, 200, %{status: "ok", version: version})
   end
 
+  # ============================================
+  # Transfer Scale Endpoints
+  # ============================================
+
+  get "api/transfer-scales" do
+    data = TransferScaleData.all()
+    json_response(conn, 200, data)
+  end
+
+  get "api/transfer-scales/:id" do
+    id = conn.params["id"]
+    data = TransferScaleData.get(id)
+
+    if id in TransferScaleData.devices() do
+      json_response(conn, 200, data)
+    else
+      json_response(conn, 404, %{error: "not_found"})
+    end
+  end
+
+  post "api/transfer-scales/:id/data" do
+    scale_id = conn.params["id"]
+    params = conn.body_params || %{}
+
+    case parse_transfer_scale_float(params["raw_weight"]) do
+      nil ->
+        json_response(conn, 400, %{error: "raw_weight is required and must be a number"})
+
+      raw_weight ->
+        last_updated = System.os_time(:second)
+
+        TransferScaleData.publish(scale_id, [
+          {:raw_weight, raw_weight},
+          {:last_updated, last_updated}
+        ])
+
+        WebSocketHandler.publish_transfer_scale(scale_id)
+
+        updated = TransferScaleData.get(scale_id)
+
+        json_response(conn, 200, %{
+          status: "ok",
+          id: scale_id,
+          raw_weight: raw_weight,
+          fill_percent: updated[:fill_percent]
+        })
+    end
+  end
+
+  post "api/transfer-scales/:id/config" do
+    scale_id = conn.params["id"]
+    params = conn.body_params || %{}
+
+    label = params["label"]
+    empty_keg_weight = parse_transfer_scale_float(params["empty_keg_weight"])
+    target_weight = parse_transfer_scale_float(params["target_weight"])
+
+    data =
+      []
+      |> then(fn d -> if is_binary(label), do: [{:label, label} | d], else: d end)
+      |> then(fn d ->
+        if is_number(empty_keg_weight), do: [{:empty_keg_weight, empty_keg_weight} | d], else: d
+      end)
+      |> then(fn d ->
+        if is_number(target_weight), do: [{:target_weight, target_weight} | d], else: d
+      end)
+
+    TransferScaleData.publish(scale_id, data)
+
+    json_response(conn, 200, %{status: "ok", id: scale_id})
+  end
+
+  post "api/transfer-scales/:id/delete" do
+    scale_id = conn.params["id"]
+
+    :dets.match_delete(:transfer_scale_data, {{scale_id, :_}, :_})
+
+    json_response(conn, 200, %{status: "ok", deleted: scale_id})
+  end
+
   match _ do
     send_resp(conn, 404, "Not found")
   end
@@ -998,6 +1079,18 @@ defmodule OpenPlaatoKeg.HttpRouter do
     end
   end
   defp parse_airlock_value(_), do: nil
+
+  # Transfer scale: accept number or string, return float (nil if invalid)
+  defp parse_transfer_scale_float(nil), do: nil
+  defp parse_transfer_scale_float(v) when is_float(v), do: v
+  defp parse_transfer_scale_float(v) when is_integer(v), do: v * 1.0
+  defp parse_transfer_scale_float(v) when is_binary(v) do
+    case Float.parse(v) do
+      {num, ""} -> num
+      _ -> nil
+    end
+  end
+  defp parse_transfer_scale_float(_), do: nil
 
   defp maybe_append(list, _key, nil), do: list
   defp maybe_append(list, key, value), do: [{key, value} | list] |> Enum.reverse()
