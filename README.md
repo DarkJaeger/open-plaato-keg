@@ -8,6 +8,7 @@ Supports:
 - **Plaato Airlock** — fermentation sensor with bubble count (BPM) and temperature
 - **Generic airlocks** — any device that can POST to `/api/airlocks/:id/data`
 - **Android companion app** — native app for monitoring kegs and airlocks from your phone ([open-plaato-keg-android](https://github.com/DarkJaeger/open-plaato-keg-android))
+- **iOS companion app** — SwiftUI app for iPhone and iPad ([open-plaato-keg-ios](https://github.com/DarkJaeger/open-plaato-keg-ios))
 
 ## Why this exists?
 
@@ -40,6 +41,7 @@ graph LR
     B --> H[Grainfather];
     B --> I[Brewfather];
     B <--> J[Android App];
+    B <--> K[iOS App];
 ```
 
 ## Setup
@@ -287,6 +289,19 @@ Features:
 - Beverage library management with Brewfather batch import
 - Pour notifications — fires a local notification when a pour is detected (configurable, ≥ 5 oz threshold to suppress scale noise)
 - Settings for server URL, airlock support, and Brewfather credentials
+
+### iOS Companion App
+
+A native SwiftUI app for iPhone and iPad is available at [open-plaato-keg-ios](https://github.com/DarkJaeger/open-plaato-keg-ios).
+
+Requires iOS 16+ and an `open-plaato-keg` server running on your local network.
+
+Features:
+- Live tap list with keg levels, temperature, and pour status
+- Full keg details with beer info
+- Airlock monitoring with BPM and temperature readings
+- Beverage library management
+- Configurable server URL via Settings tab
 
 ### HTTP REST API
 
