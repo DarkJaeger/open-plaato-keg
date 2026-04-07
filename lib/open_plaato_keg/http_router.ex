@@ -4,10 +4,10 @@ defmodule OpenPlaatoKeg.HttpRouter do
   alias OpenPlaatoKeg.KegCommander
   alias OpenPlaatoKeg.Metrics
   alias OpenPlaatoKeg.Models.AirlockData
-  alias OpenPlaatoKeg.Models.TransferScaleData
   alias OpenPlaatoKeg.Models.BeerDB
   alias OpenPlaatoKeg.Models.BeverageDB
   alias OpenPlaatoKeg.Models.KegData
+  alias OpenPlaatoKeg.Models.TransferScaleData
   alias OpenPlaatoKeg.MqttHandler
   alias OpenPlaatoKeg.WebSocketHandler
 
