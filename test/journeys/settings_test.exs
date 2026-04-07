@@ -43,7 +43,10 @@ defmodule Journeys.SettingsTest do
     decoded = decode(cmd)
 
     assert_value(
-      decoded == [plaato_decoded: {:property, "51", "max", "19.666"}, plaato_data_decoded: nil]
+      decoded == [
+        plaato_decoded: {:property, "51", "max", "19.666"},
+        plaato_data_decoded: {:max_keg_volume, "19.666"}
+      ]
     )
   end
 
@@ -65,7 +68,10 @@ defmodule Journeys.SettingsTest do
     decoded = decode(cmd)
 
     assert_value(
-      decoded == [plaato_decoded: {:property, "51", "max", "19.666"}, plaato_data_decoded: nil]
+      decoded == [
+        plaato_decoded: {:property, "51", "max", "19.666"},
+        plaato_data_decoded: {:max_keg_volume, "19.666"}
+      ]
     )
   end
 

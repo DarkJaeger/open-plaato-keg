@@ -1,6 +1,5 @@
 defmodule DecoderTest do
   use ExUnit.Case
-  import AssertValue
 
   alias OpenPlaatoKeg.BlynkProtocol
   alias OpenPlaatoKeg.PlaatoData
@@ -17,7 +16,7 @@ defmodule DecoderTest do
       |> Enum.map(&File.read!(&1))
       |> Enum.map(&decode/1)
 
-    assert_value(
+    assert(
       results ==
         [
           [
@@ -138,6 +137,7 @@ defmodule DecoderTest do
             plaato_payload_decoded: [
               temperature_offset: "-7.500",
               firmware_version: "2.0.10a",
+              max_keg_volume: "20.059",
               amount_left: "0.040",
               percent_of_beer_left: "0.000"
             ]
@@ -1102,7 +1102,7 @@ defmodule DecoderTest do
               {:hardware, 158, 14, <<118, 119, 0, 57, 50, 0, 55, 52, 46, 52, 52, 194, 176, 67>>}
             ],
             plaato_decoded: [{:hardware, "vw", "92", "74.44°C"}],
-            plaato_payload_decoded: []
+            plaato_payload_decoded: [chip_temperature_string: "74.44°C"]
           ],
           [
             binary:
