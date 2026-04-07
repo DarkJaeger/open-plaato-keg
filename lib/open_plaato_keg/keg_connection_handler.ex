@@ -9,13 +9,6 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
   @takeover_retry_ms 100
 
   def handle_connection(_socket, _state) do
-    # IMPORTANT:
-    # Start a per-connection data processor (no global name).
-    {:ok, pid} = OpenPlaatoKeg.KegDataProcessor.start_link(%{})
-
-    # start_link already links; no need for Process.link/1
-
-  def handle_connection(_socket, _state) do
     {:ok, pid} = OpenPlaatoKeg.KegDataProcessor.start_link(%{})
     state = %{keg_data_processor: pid, keg_id: nil}
     {:continue, state}
@@ -34,8 +27,6 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
       end
 
     ThousandIsland.Socket.send(socket, ack)
-    # Acknowledge Blynk-style packets
-    ThousandIsland.Socket.send(socket, BlynkProtocol.response_success())
 
     # Process/publish decoded data
     GenServer.cast(state.keg_data_processor, {:keg_data, data})
@@ -48,7 +39,6 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
 
   def handle_close(_socket, state) do
     if state.keg_id do
-      Logger.info("Device #{state.keg_id} disconnected")
       Logger.info("Keg #{state.keg_id} disconnected")
 
       # Unregister the socket (only affects this process's registration)
@@ -57,16 +47,12 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
       # Only push the disconnect update for kegs (not airlocks).
       # Airlocks don't have is_pouring and their ID won't be in KegData.
       if state.keg_id in OpenPlaatoKeg.Models.KegData.devices() do
+        # Prevent phantom "pouring" UI by pushing a disconnect update.
+        # Plaato values are typically stringy, so "0" is safest.
         disconnect_update = [is_pouring: "0"]
         OpenPlaatoKeg.Models.KegData.publish(state.keg_id, disconnect_update)
         OpenPlaatoKeg.WebSocketHandler.publish(state.keg_id, disconnect_update)
       end
-      # Prevent phantom "pouring" UI by pushing a disconnect update.
-      # Plaato values are typically stringy, so "0" is safest.
-      disconnect_update = [is_pouring: "0"]
-
-      OpenPlaatoKeg.Models.KegData.publish(state.keg_id, disconnect_update)
-      OpenPlaatoKeg.WebSocketHandler.publish(state.keg_id, disconnect_update)
     end
 
     :ok
@@ -91,11 +77,6 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
 
             # Kill stale handler holding the unique key so we can take over immediately.
             if old_pid != self(), do: Process.exit(old_pid, :kill)
-            Logger.warning("Keg #{keg_id} already registered by #{inspect(old_pid)}; taking over")
-
-            # Kill stale handler holding the unique key so we can take over immediately.
-            if old_pid != self(),
-              do: Process.exit(old_pid, :kill)
 
             Process.sleep(@takeover_retry_ms)
 
