@@ -515,11 +515,12 @@ defmodule OpenPlaatoKeg.HttpRouter do
 
     if unit_pin do
       current = KegData.get(keg_id)
-      measure_unit = current[:measure_unit] || "2"
+      measure_unit = to_string(current[:measure_unit] || "2")
+      keg_mode = to_string(current[:keg_mode_c02_beer] || "1")
 
       KegData.publish(keg_id, [
         {:unit, unit_pin},
-        {:beer_left_unit, derive_beer_left_unit(unit_pin, measure_unit)},
+        {:beer_left_unit, derive_beer_left_unit(unit_pin, measure_unit, keg_mode)},
         {:temperature_unit, derive_temperature_unit(unit_pin)}
       ])
 
@@ -552,11 +553,12 @@ defmodule OpenPlaatoKeg.HttpRouter do
 
     if measure_pin do
       current = KegData.get(keg_id)
-      unit = current[:unit] || "1"
+      unit = to_string(current[:unit] || "1")
+      keg_mode = to_string(current[:keg_mode_c02_beer] || "1")
 
       KegData.publish(keg_id, [
         {:measure_unit, measure_pin},
-        {:beer_left_unit, derive_beer_left_unit(unit, measure_pin)}
+        {:beer_left_unit, derive_beer_left_unit(unit, measure_pin, keg_mode)}
       ])
 
       WebSocketHandler.publish(keg_id, [])
@@ -572,18 +574,52 @@ defmodule OpenPlaatoKeg.HttpRouter do
     keg_id = conn.params["id"]
     %{"value" => value} = conn.body_params
 
-    result =
+    {result, mode_pin} =
       case value do
-        "beer" -> KegCommander.set_keg_mode_beer(keg_id)
-        "1" -> KegCommander.set_keg_mode_beer(keg_id)
-        "co2" -> KegCommander.set_keg_mode_co2(keg_id)
-        "2" -> KegCommander.set_keg_mode_co2(keg_id)
-        _ -> {:error, :invalid_value}
+        v when v in ["beer", "1"] -> {KegCommander.set_keg_mode_beer(keg_id), "1"}
+        v when v in ["co2", "2"]  -> {KegCommander.set_keg_mode_co2(keg_id), "2"}
+        _ -> {{:error, :invalid_value}, nil}
       end
+
+    if mode_pin do
+      current = KegData.get(keg_id)
+      unit = to_string(current[:unit] || "1")
+      measure_unit = to_string(current[:measure_unit] || "2")
+
+      KegData.publish(keg_id, [
+        {:keg_mode_c02_beer, mode_pin},
+        {:beer_left_unit, derive_beer_left_unit(unit, measure_unit, mode_pin)}
+      ])
+
+      WebSocketHandler.publish(keg_id, [])
+    end
 
     case result do
       :ok -> json_response(conn, 200, %{status: "ok", command: "keg_mode", value: value})
       {:error, reason} -> json_response(conn, 503, %{error: reason})
+    end
+  end
+
+  post "api/kegs/:id/co2-capacity" do
+    keg_id = conn.params["id"]
+    %{"value" => value} = conn.body_params
+
+    capacity =
+      cond do
+        is_number(value) -> to_string(value)
+        is_binary(value) ->
+          case Float.parse(value) do
+            {_, ""} -> value
+            _ -> nil
+          end
+        true -> nil
+      end
+
+    if capacity do
+      KegData.publish(keg_id, [{:my_co2_capacity, capacity}])
+      json_response(conn, 200, %{status: "ok", co2_capacity: capacity})
+    else
+      json_response(conn, 400, %{error: "value must be a number"})
     end
   end
 
@@ -1098,12 +1134,14 @@ defmodule OpenPlaatoKeg.HttpRouter do
   defp maybe_put_response(map, _key, nil), do: map
   defp maybe_put_response(map, key, value), do: Map.put(map, key, value)
 
-  # unit pin "1" = metric, "2" = US; measure_unit pin "1" = weight, "2" = volume
-  defp derive_beer_left_unit("1", "1"), do: "kg"
-  defp derive_beer_left_unit("1", _),   do: "litre"
-  defp derive_beer_left_unit("2", "1"), do: "lbs"
-  defp derive_beer_left_unit("2", _),   do: "gal"
-  defp derive_beer_left_unit(_, _),     do: "litre"
+  # unit "1" = metric, "2" = US; measure_unit "1" = weight; keg_mode "2" = CO2
+  defp derive_beer_left_unit("1", _, "2"), do: "kg CO\u2082"
+  defp derive_beer_left_unit("2", _, "2"), do: "lbs CO\u2082"
+  defp derive_beer_left_unit("1", "1", _), do: "kg"
+  defp derive_beer_left_unit("1", _, _),   do: "litre"
+  defp derive_beer_left_unit("2", "1", _), do: "lbs"
+  defp derive_beer_left_unit("2", _, _),   do: "gal"
+  defp derive_beer_left_unit(_, _, _),     do: "litre"
 
   defp derive_temperature_unit("2"), do: "°F"
   defp derive_temperature_unit(_),   do: "°C"

@@ -23,7 +23,8 @@ defmodule OpenPlaatoKeg.Models.KegData do
 
     if unit in ["1", "2"] do
       measure = to_string(data[:measure_unit] || "")
-      Map.put(data, :beer_left_unit, derive_beer_left_unit(unit, measure))
+      keg_mode = to_string(data[:keg_mode_c02_beer] || "1")
+      Map.put(data, :beer_left_unit, derive_beer_left_unit(unit, measure, keg_mode))
     else
       data
     end
@@ -51,10 +52,14 @@ defmodule OpenPlaatoKeg.Models.KegData do
     |> Enum.each(fn key -> :dets.delete(:keg_data, {id, key}) end)
   end
 
-  # unit "1" = metric, "2" = US; measure_unit "1" = weight, "2" = volume
-  defp derive_beer_left_unit("1", "1"), do: "kg"
-  defp derive_beer_left_unit("1", _),   do: "litre"
-  defp derive_beer_left_unit("2", "1"), do: "lbs"
-  defp derive_beer_left_unit("2", _),   do: "gal"
-  defp derive_beer_left_unit(_, _),     do: "litre"
+  # unit "1" = metric, "2" = US; measure_unit "1" = weight; keg_mode "2" = CO2
+  # CO2 mode: always weight-based regardless of measure_unit setting
+  defp derive_beer_left_unit("1", _, "2"), do: "kg CO\u2082"
+  defp derive_beer_left_unit("2", _, "2"), do: "lbs CO\u2082"
+  # Beer mode: unit + measure_unit
+  defp derive_beer_left_unit("1", "1", _), do: "kg"
+  defp derive_beer_left_unit("1", _, _),   do: "litre"
+  defp derive_beer_left_unit("2", "1", _), do: "lbs"
+  defp derive_beer_left_unit("2", _, _),   do: "gal"
+  defp derive_beer_left_unit(_, _, _),     do: "litre"
 end
