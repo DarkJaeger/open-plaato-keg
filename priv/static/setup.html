@@ -389,9 +389,20 @@
               </div>
             </div>
 
-            <p class="help has-text-warning-dark" style="margin-top: 1rem;">
-              ⚠️ CO₂ mode is experimental and doesn't properly read the pins dedicated to CO₂. Use at your own discretion. Clicking this button won't visibly change the mode since there is no pin to read the current mode.
-            </p>
+            <div id="co2CapacityField" class="field" style="display:none; margin-top:1rem;">
+              <label class="label">CO₂ Cylinder Capacity</label>
+              <p class="help">Total weight of a full CO₂ cylinder (kg or lbs, matching your unit setting). Used to track how much CO₂ is remaining.</p>
+              <div class="control">
+                <div class="field has-addons">
+                  <div class="control is-expanded">
+                    <input class="input" type="number" id="co2CapacityInput" placeholder="e.g. 2.5" step="0.01" min="0" />
+                  </div>
+                  <div class="control">
+                    <button class="button is-primary" onclick="saveCO2Capacity()">Set</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Current Status Display -->
@@ -784,6 +795,12 @@
         // Keg mode
         if (data.keg_mode_c02_beer === "1") document.getElementById("kegModeBeer")?.classList.add("is-primary", "is-selected");
         if (data.keg_mode_c02_beer === "2") document.getElementById("kegModeCO2")?.classList.add("is-primary", "is-selected");
+        const co2Field = document.getElementById('co2CapacityField');
+        if (co2Field) co2Field.style.display = data.keg_mode_c02_beer === "2" ? 'block' : 'none';
+        if (data.my_co2_capacity) {
+          const cap = document.getElementById('co2CapacityInput');
+          if (cap && document.activeElement !== cap) cap.value = data.my_co2_capacity;
+        }
 
         // Sensitivity
         const sensId = `sens${data.sensitivity}`;
@@ -1078,6 +1095,25 @@
 
       function setKegMode(value) {
         sendCommand("keg-mode", { value });
+        document.getElementById('co2CapacityField').style.display = value === 'co2' ? 'block' : 'none';
+      }
+
+      function saveCO2Capacity() {
+        const kegId = document.getElementById('kegId')?.value;
+        if (!kegId) { showToast('Select a keg first', 'warning'); return; }
+        const value = document.getElementById('co2CapacityInput').value.trim();
+        if (!value) { showToast('Enter a capacity value', 'warning'); return; }
+        fetch(`/api/kegs/${kegId}/co2-capacity`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value }),
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (data.status === 'ok') showToast('CO₂ capacity saved', 'success');
+            else showToast(`Error: ${data.error}`, 'danger');
+          })
+          .catch(err => showToast(`Error: ${err.message}`, 'danger'));
       }
 
       function setSensitivity(level) {
