@@ -154,7 +154,6 @@ body {
 .navbar-dropdown .navbar-item:first-child { border-radius: var(--radius-md) var(--radius-md) 0 0; }
 .navbar-dropdown .navbar-item:last-child  { border-radius: 0 0 var(--radius-md) var(--radius-md); }
 
-.navbar-item.has-dropdown:hover .navbar-dropdown,
 .navbar-item.has-dropdown.is-open .navbar-dropdown {
   display: block;
 }
