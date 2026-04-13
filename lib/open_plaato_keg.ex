@@ -42,6 +42,11 @@ defmodule OpenPlaatoKeg do
     beverages_path = Path.join(db_folder, "beverages.bin")
     {:ok, _} = :dets.open_file(:beverages, [{:file, String.to_charlist(beverages_path)}])
 
+    # Time-series data log for kegs and airlocks
+    data_log_path = Path.join(db_folder, "data_log.bin")
+    {:ok, _} = :dets.open_file(:data_log, [{:file, String.to_charlist(data_log_path)}])
+    OpenPlaatoKeg.Models.DataLog.init_throttle()
+
     # Ensure tap handle image directory exists (persistent volume)
     File.mkdir_p!(Path.join(db_folder, "tap-handles"))
 
