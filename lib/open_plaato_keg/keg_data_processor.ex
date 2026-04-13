@@ -4,6 +4,7 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
 
   alias OpenPlaatoKeg.BlynkProtocol
   alias OpenPlaatoKeg.Models.AirlockData
+  alias OpenPlaatoKeg.Models.DataLog
   alias OpenPlaatoKeg.Models.KegData
   alias OpenPlaatoKeg.PlaatoData
   alias OpenPlaatoKeg.PlaatoProtocol
@@ -147,6 +148,20 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
        fn -> confirmed_keg? and amount_left_changed? and OpenPlaatoKeg.barhelper_config()[:enabled] end}
     ])
 
+    if confirmed_keg? and id != nil do
+      log_data =
+        %{
+          "amount_left" => Keyword.get(data, :amount_left),
+          "keg_temperature" => Keyword.get(data, :keg_temperature),
+          "percent_of_beer_left" => Keyword.get(data, :percent_of_beer_left),
+          "is_pouring" => Keyword.get(data, :is_pouring)
+        }
+        |> Enum.reject(fn {_, v} -> v == nil end)
+        |> Map.new()
+
+      DataLog.log(:keg, id, log_data)
+    end
+
     {:noreply, state}
   end
 
@@ -196,6 +211,16 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
       OpenPlaatoKeg.WebSocketHandler.publish_airlock(id, airlock_fields)
       OpenPlaatoKeg.Grainfather.maybe_send(id, Keyword.get(data, :airlock_temperature), bpm && to_string(bpm))
       OpenPlaatoKeg.Brewfather.maybe_send(id, Keyword.get(data, :airlock_temperature), bpm && to_string(bpm), bubble_total)
+
+      log_data =
+        %{
+          "temperature" => Keyword.get(airlock_fields, :temperature),
+          "bubbles_per_min" => bpm && to_string(bpm)
+        }
+        |> Enum.reject(fn {_, v} -> v == nil end)
+        |> Map.new()
+
+      DataLog.log(:airlock, id, log_data)
     end
 
     {:noreply, new_state}

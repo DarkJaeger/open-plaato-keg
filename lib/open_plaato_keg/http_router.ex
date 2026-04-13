@@ -6,6 +6,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
   alias OpenPlaatoKeg.Models.AirlockData
   alias OpenPlaatoKeg.Models.BeerDB
   alias OpenPlaatoKeg.Models.BeverageDB
+  alias OpenPlaatoKeg.Models.DataLog
   alias OpenPlaatoKeg.Models.KegData
   alias OpenPlaatoKeg.Models.TransferScaleData
   alias OpenPlaatoKeg.MqttHandler
@@ -397,6 +398,13 @@ defmodule OpenPlaatoKeg.HttpRouter do
         # Send to Grainfather/Brewfather if enabled (throttled to every 15 min by each module)
         OpenPlaatoKeg.Grainfather.maybe_send(airlock_id, temperature, bubbles_per_min)
         OpenPlaatoKeg.Brewfather.maybe_send(airlock_id, temperature, bubbles_per_min)
+
+        log_data =
+          %{"temperature" => temperature, "bubbles_per_min" => bubbles_per_min}
+          |> Enum.reject(fn {_, v} -> v == nil end)
+          |> Map.new()
+
+        DataLog.log(:airlock, airlock_id, log_data)
 
         response =
           %{status: "ok", command: "airlock_data"}
@@ -1092,11 +1100,73 @@ defmodule OpenPlaatoKeg.HttpRouter do
     json_response(conn, 200, %{status: "ok", deleted: scale_id})
   end
 
+  # ============================================
+  # Data Log – time-series history for kegs and airlocks
+  # ============================================
+
+  get "api/kegs/:id/log/csv" do
+    id = conn.params["id"]
+    range = conn.query_params["range"] || "30d"
+    {from_ts, to_ts} = parse_time_range(range)
+    entries = DataLog.get(:keg, id, from_ts, to_ts)
+    csv = DataLog.to_csv(:keg, entries)
+
+    conn
+    |> put_resp_content_type("text/csv")
+    |> put_resp_header("content-disposition", "attachment; filename=\"keg-#{id}-log.csv\"")
+    |> send_resp(200, csv)
+  end
+
+  get "api/kegs/:id/log" do
+    id = conn.params["id"]
+    range = conn.query_params["range"] || "24h"
+    {from_ts, to_ts} = parse_time_range(range)
+    entries = DataLog.get(:keg, id, from_ts, to_ts)
+    json_response(conn, 200, entries)
+  end
+
+  get "api/airlocks/:id/log/csv" do
+    id = conn.params["id"]
+    range = conn.query_params["range"] || "30d"
+    {from_ts, to_ts} = parse_time_range(range)
+    entries = DataLog.get(:airlock, id, from_ts, to_ts)
+    csv = DataLog.to_csv(:airlock, entries)
+
+    conn
+    |> put_resp_content_type("text/csv")
+    |> put_resp_header("content-disposition", "attachment; filename=\"airlock-#{id}-log.csv\"")
+    |> send_resp(200, csv)
+  end
+
+  get "api/airlocks/:id/log" do
+    id = conn.params["id"]
+    range = conn.query_params["range"] || "24h"
+    {from_ts, to_ts} = parse_time_range(range)
+    entries = DataLog.get(:airlock, id, from_ts, to_ts)
+    json_response(conn, 200, entries)
+  end
+
   match _ do
     send_resp(conn, 404, "Not found")
   end
 
   # Helper functions
+
+  defp parse_time_range(range) do
+    now = System.system_time(:second)
+
+    seconds =
+      case range do
+        "1h" -> 3_600
+        "6h" -> 21_600
+        "24h" -> 86_400
+        "7d" -> 604_800
+        "30d" -> 2_592_000
+        _ -> 86_400
+      end
+
+    {now - seconds, now}
+  end
 
   defp json_response(conn, status, data) do
     conn
