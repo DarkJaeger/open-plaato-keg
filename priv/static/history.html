@@ -38,7 +38,7 @@
             <div class="navbar-dropdown">
               <a class="navbar-item" href="/taplist-setup.html">Tap Setup</a>
               <a class="navbar-item" href="/tap-handles.html">Tap Handles</a>
-              <a class="navbar-item" href="/setup.html">Keg Setup</a>
+              <a class="navbar-item" href="/setup.html">Scale Setup</a>
               <a class="navbar-item" href="/airlock-setup.html">Airlock Setup</a>
               <a class="navbar-item" href="/transfer-scales.html">Transfer Scales</a>
               <a class="navbar-item" href="/beverages.html">Beverages</a>
@@ -229,12 +229,14 @@
           const kegsResp = await fetch('/api/kegs');
           const kegsData = await kegsResp.json();
           const labelMap = {};
-          kegsData.forEach(k => { labelMap[k.id] = k.my_label || k.id; });
+          kegsData.forEach((k, index) => {
+            labelMap[k.id] = (k.my_label || '').trim() || `Scale ${index + 1}`;
+          });
 
-          devices.forEach(id => {
+          devices.forEach((id, index) => {
             const opt = document.createElement('option');
             opt.value = id;
-            opt.textContent = labelMap[id] || id;
+            opt.textContent = labelMap[id] || `Scale ${index + 1}`;
             sel.appendChild(opt);
           });
         } else {
