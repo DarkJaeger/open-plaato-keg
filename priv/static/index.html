@@ -183,11 +183,8 @@
                             <!-- Valve cap -->
                             <rect x="36" y="3" width="28" height="14" rx="5" class="co2-valve"/>
                             <line x1="50" y1="3" x2="50" y2="17" class="co2-valve-divider"/>
-                            <!-- Amount + unit + percent, centered in bottle body -->
-                            <text x="50" y="100" text-anchor="middle" dominant-baseline="central" class="co2-amount">${amountLeft.toFixed(1)}</text>
-                            <text x="50" y="118" text-anchor="middle" dominant-baseline="central" class="co2-unit">${volumeUnit}</text>
-                            <text x="50" y="136" text-anchor="middle" dominant-baseline="central" class="co2-pct${isLow ? ' is-low' : ''}">${percentLeft.toFixed(0)}%</text>
                         </svg>
+                        <div class="keg-remaining-text">${percentLeft.toFixed(1)}% CO\u2082 remaining</div>
                     </div>
                 `;
             } else {
@@ -203,7 +200,6 @@
                     </div>
                 `;
             }
-
             const primarySection = isPercentPrimary
                 ? `
                     <div class="keg-remaining is-primary${isCO2 ? ' is-co2-gauge' : ''}">
@@ -225,7 +221,6 @@
                         <span class="keg-volume-number">${amountLeft.toFixed(2)}</span><span class="keg-volume-unit">${volumeUnit}</span>
                     </div>` : ''}`
                 : volumeSection;
-
             const card = `
                 <div class="card keg-card${isCO2 ? ' is-co2' : ''}" data-keg-id="${kegData.id}">
                     <div class="keg-header">
