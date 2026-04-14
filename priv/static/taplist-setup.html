@@ -44,7 +44,7 @@
             <div class="navbar-dropdown">
               <a class="navbar-item" href="/taplist-setup.html">Tap Setup</a>
               <a class="navbar-item" href="/tap-handles.html">Tap Handles</a>
-              <a class="navbar-item" href="/setup.html">Keg Setup</a>
+              <a class="navbar-item" href="/setup.html">Scale Setup</a>
               <a class="navbar-item" href="/airlock-setup.html">Airlock Setup</a>
               <a class="navbar-item" href="/transfer-scales.html">Transfer Scales</a>
               <a class="navbar-item" href="/beverages.html">Beverages</a>
@@ -195,6 +195,27 @@
             </div>
           </div>
 
+          <div class="columns">
+            <div class="column">
+              <div class="field">
+                <label class="label">Date Kegged</label>
+                <p class="help" id="kegDateHelp">Link a keg sensor to load and save this using the existing keg date setting.</p>
+                <div class="control">
+                  <input class="input" type="text" id="kegDate" placeholder="e.g. 25.03.2025" />
+                </div>
+              </div>
+            </div>
+            <div class="column">
+              <div class="field">
+                <label class="label">Expiration Date</label>
+                <p class="help">Stored with this tap configuration.</p>
+                <div class="control">
+                  <input class="input" type="text" id="expirationDate" placeholder="e.g. 25.05.2025" />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="field">
             <label class="label">Tap Handle Image</label>
             <p class="help">Select an uploaded tap handle image. Upload images on the <a href="/tap-handles.html">Tap Handles</a> page.</p>
@@ -328,6 +349,12 @@
       if (ev.target.id === 'deviceId') updateDeviceIdCallout(ev.target.value);
     });
 
+    document.addEventListener('change', ev => {
+      if (ev.target.id === 'linkedKeg') {
+        loadLinkedKegDate(ev.target.value);
+      }
+    });
+
     // ── Handle image preview ──────────────────────
     document.addEventListener('change', ev => {
       if (ev.target.id === 'handleImage') {
@@ -393,6 +420,50 @@
       showToast('Loaded from beverage library', 'success');
     }
 
+    function updateKegDateFieldState(kegId) {
+      const input = document.getElementById('kegDate');
+      const help = document.getElementById('kegDateHelp');
+      if (!input || !help) return;
+
+      if (kegId) {
+        input.disabled = false;
+        help.textContent = 'Saved to the linked keg using the existing keg date endpoint.';
+      } else {
+        input.disabled = true;
+        input.value = '';
+        help.textContent = 'Link a keg sensor to load and save this using the existing keg date setting.';
+      }
+    }
+
+    async function loadLinkedKegDate(kegId) {
+      updateKegDateFieldState(kegId);
+      if (!kegId) return;
+
+      try {
+        const res = await fetch(`/api/kegs/${encodeURIComponent(kegId)}`);
+        if (!res.ok) throw new Error(await res.text());
+        const keg = await res.json();
+        document.getElementById('kegDate').value = (keg.my_keg_date || '').trim();
+      } catch (e) {
+        showToast('Failed to load keg date: ' + e.message, 'danger');
+      }
+    }
+
+    async function saveLinkedKegDate(kegId, value) {
+      if (!kegId) return;
+
+      const res = await fetch(`/api/kegs/${encodeURIComponent(kegId)}/date`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ value }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text);
+      }
+    }
+
     function renderTapList() {
       const container = document.getElementById('tapListContainer');
       if (!allTaps.length) {
@@ -422,10 +493,11 @@
       const kegSel = document.getElementById('linkedKeg');
       const prev = kegSel.value;
       kegSel.innerHTML = '<option value="">No sensor linked</option>';
-      allKegs.forEach(k => {
+      allKegs.forEach((k, index) => {
         const opt = document.createElement('option');
         opt.value = k.id;
-        opt.textContent = `${(k.id || '').slice(0,8)}… ${k.beer_left_unit || ''} ${k.amount_left ? '('+parseFloat(k.amount_left).toFixed(1)+' left)' : ''}`;
+        const label = (k.my_label || '').trim() || `Scale ${index + 1}`;
+        opt.textContent = `${label} ${k.beer_left_unit || ''} ${k.amount_left ? '('+parseFloat(k.amount_left).toFixed(1)+' left)' : ''}`;
         kegSel.appendChild(opt);
       });
       if (prev) kegSel.value = prev;
@@ -452,7 +524,7 @@
         tap_number: maxNum + 1,
         name: '', brewery: '', style: '', abv: '', ibu: '',
         color: '#c9a849', description: '', tasting_notes: '',
-        keg_id: '', handle_image: '', device_id: ''
+        keg_id: '', handle_image: '', device_id: '', expiration_date: ''
       });
     }
 
@@ -481,9 +553,11 @@
       document.getElementById('beerDescription').value = tap.description || '';
       document.getElementById('tastingNotes').value = tap.tasting_notes || '';
       document.getElementById('linkedKeg').value    = tap.keg_id || '';
+      document.getElementById('expirationDate').value = tap.expiration_date || '';
       document.getElementById('handleImage').value  = tap.handle_image || '';
       document.getElementById('deviceId').value     = tap.device_id || '';
       updateDeviceIdCallout(tap.device_id || '');
+      loadLinkedKegDate(tap.keg_id || '');
 
       updateActiveSwatch(tap.color || '#c9a849');
 
@@ -520,12 +594,16 @@
         color:         document.getElementById('beerColor').value.trim() || '#c9a849',
         description:   document.getElementById('beerDescription').value.trim(),
         tasting_notes: document.getElementById('tastingNotes').value.trim(),
+        expiration_date: document.getElementById('expirationDate').value.trim(),
         keg_id:        document.getElementById('linkedKeg').value || null,
         handle_image:  document.getElementById('handleImage').value || null,
         device_id:     document.getElementById('deviceId').value.trim().slice(0, 6) || null,
       };
 
       try {
+        if (body.keg_id) {
+          await saveLinkedKegDate(body.keg_id, document.getElementById('kegDate').value.trim());
+        }
         const res = await fetch(`/api/taps/${currentTapId}`, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
@@ -560,6 +638,7 @@
     }
 
     initSwatches();
+    updateKegDateFieldState('');
     loadAll();
   </script>
 </body>

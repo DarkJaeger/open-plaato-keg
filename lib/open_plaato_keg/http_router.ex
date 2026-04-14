@@ -265,6 +265,26 @@ defmodule OpenPlaatoKeg.HttpRouter do
     json_response(conn, 200, %{status: "ok", command: "label", value: value})
   end
 
+  post "api/kegs/:id/display-mode" do
+    keg_id = conn.params["id"]
+
+    value =
+      (conn.body_params || %{})["value"]
+      |> Kernel.to_string()
+      |> String.trim()
+
+    case value do
+      v when v in ["weight_primary", "percent_primary"] ->
+        KegData.publish(keg_id, [{:my_display_mode, v}])
+        WebSocketHandler.publish(keg_id, [])
+
+        json_response(conn, 200, %{status: "ok", command: "display_mode", value: v})
+
+      _ ->
+        json_response(conn, 400, %{error: "Invalid display mode"})
+    end
+  end
+
   # ============================================
   # Monitor Commands
   # ============================================
@@ -682,6 +702,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
       color: to_string(p["color"] || "#c9a849"),
       description: to_string(p["description"] || ""),
       tasting_notes: to_string(p["tasting_notes"] || ""),
+      expiration_date: to_string(p["expiration_date"] || ""),
       keg_id: nilify_empty(p["keg_id"]),
       handle_image: nilify_empty(p["handle_image"]),
       device_id: nilify_empty(raw_device_id)

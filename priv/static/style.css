@@ -796,8 +796,29 @@ body {
   margin-left: 0.3rem;
 }
 
+.keg-volume.is-secondary {
+  padding-top: 0.55rem;
+  padding-bottom: 1rem;
+  border-top: none;
+}
+
+.keg-volume.is-secondary .keg-volume-number {
+  font-size: 1.7rem;
+  color: rgba(254, 252, 232, 0.8);
+}
+
+.keg-volume.is-secondary .keg-volume-unit {
+  font-size: 0.95rem;
+  color: rgba(254, 252, 232, 0.55);
+}
+
 .keg-remaining {
   padding: 0.9rem 1.25rem;
+}
+
+.keg-remaining.is-primary {
+  padding-top: 1.1rem;
+  padding-bottom: 0.6rem;
 }
 
 .keg-progress-track {
@@ -826,6 +847,66 @@ body {
   text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+.keg-remaining-big {
+  font-family: var(--font-mono);
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: var(--amber-400);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-align: center;
+  margin-bottom: 0.35rem;
+}
+
+.keg-remaining.is-co2-gauge {
+  padding-top: 1.2rem;
+  padding-bottom: 1rem;
+}
+
+.co2-gauge-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.6rem;
+}
+
+.co2-gauge {
+  position: relative;
+  width: 72px;
+  padding-top: 16px;
+}
+
+.co2-gauge-cap {
+  width: 30px;
+  height: 10px;
+  margin: 0 auto 4px;
+  border-radius: 6px 6px 3px 3px;
+  background: rgba(254, 252, 232, 0.3);
+  border: 1px solid rgba(254, 252, 232, 0.18);
+}
+
+.co2-gauge-body {
+  position: relative;
+  height: 118px;
+  border-radius: 24px 24px 18px 18px;
+  border: 2px solid rgba(254, 252, 232, 0.22);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.co2-gauge-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(180deg, #22c55e, #16a34a);
+  transition: height 0.6s ease;
+}
+
+.co2-gauge-fill.is-low {
+  background: linear-gradient(180deg, #ef4444, #dc2626);
 }
 
 .keg-footer {

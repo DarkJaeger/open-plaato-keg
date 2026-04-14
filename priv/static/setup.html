@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Keg Setup - Open Plaato</title>
+    <title>Scale Setup - Open Plaato</title>
     <style>
       @import url("style.css");
     </style>
@@ -35,7 +35,7 @@
               <div class="navbar-dropdown">
                 <a class="navbar-item" href="/taplist-setup.html">Tap Setup</a>
                 <a class="navbar-item" href="/tap-handles.html">Tap Handles</a>
-                <a class="navbar-item" href="/setup.html">Keg Setup</a>
+                <a class="navbar-item" href="/setup.html">Scale Setup</a>
                 <a class="navbar-item" href="/airlock-setup.html">Airlock Setup</a>
                 <a class="navbar-item" href="/transfer-scales.html">Transfer Scales</a>
                 <a class="navbar-item" href="/beverages.html">Beverages</a>
@@ -49,20 +49,20 @@
     <div id="page_container" class="container pageEntry">
       <section class="section">
         <div class="container">
-          <h1 class="title is-2">Keg Setup</h1>
-          <p class="subtitle">Configure and calibrate your keg scale</p>
+          <h1 class="title is-2">Scale Setup</h1>
+          <p class="subtitle">Configure and calibrate your scale</p>
 
-          <!-- Keg Selector -->
+          <!-- Scale Selector -->
           <div class="field">
-            <label class="label" for="kegId">Select Keg</label>
+            <label class="label" for="kegId">Select Scale</label>
             <div class="control">
               <div class="select is-fullwidth">
                 <select id="kegId" name="kegId">
-                  <option value="">Select a connected keg...</option>
+                  <option value="">Select a connected scale...</option>
                 </select>
               </div>
             </div>
-            <p class="help" id="connectionStatus">Loading connected kegs...</p>
+            <p class="help" id="connectionStatus">Loading connected scales...</p>
           </div>
 
           <!-- Units Section -->
@@ -123,6 +123,21 @@
               <p class="help has-text-warning-dark" style="margin-top: 0.5rem;">
                 <span style="color: #ff3860;">*</span> Sensitivity mode is experimental since the pin feedback is not read. Use at your own discretion.
               </p>
+            </div>
+
+            <div class="field">
+              <label class="label">Dashboard Display</label>
+              <p class="help">Choose whether the home card emphasizes weight or percent left</p>
+              <div class="control">
+                <div class="buttons has-addons">
+                  <button class="button displaymode-btn" id="displayModeWeightPrimary" data-value="weight_primary" onclick="setDisplayMode('weight_primary')">
+                    <span>Big weight</span>
+                  </button>
+                  <button class="button displaymode-btn" id="displayModePercentPrimary" data-value="percent_primary" onclick="setDisplayMode('percent_primary')">
+                    <span>Big percent</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -226,12 +241,12 @@
             </div>
           </div>
 
-          <!-- Beer Info Section -->
+          <!-- Scale Info Section -->
           <div class="box section-box">
-            <h2 class="title is-4">Beer Information</h2>
+            <h2 class="title is-4">Scale Information</h2>
 
             <div class="field">
-              <label class="label">Keg Label <span style="color: #ff3860;">*</span></label>
+              <label class="label">Scale Label <span style="color: #ff3860;">*</span></label>
               <p class="help">Friendly name shown on the dashboard (e.g. "Basement Tap", "Fridge #1")</p>
               <div class="control">
                 <div class="field has-addons">
@@ -245,110 +260,8 @@
               </div>
             </div>
 
-            <div class="field" id="beverageLibraryField">
-              <label class="label">Load from Beverage Library <span class="has-text-grey">(optional)</span></label>
-              <p class="help">Select a stored beverage to auto-fill beer style, keg date, OG, FG, and ABV.</p>
-              <div class="field has-addons">
-                <div class="control is-expanded">
-                  <div class="select is-fullwidth">
-                    <select id="beverageSelect">
-                      <option value="">— select a beverage —</option>
-                    </select>
-                  </div>
-                </div>
-                <div class="control">
-                  <button class="button is-info" onclick="loadFromBeverage()">Load</button>
-                </div>
-              </div>
-            </div>
-
-            <div class="columns">
-              <div class="column">
-                <div class="field">
-                  <label class="label">Beer Style <span style="color: #ff3860;">*</span></label>
-                  <div class="control">
-                    <div class="field has-addons">
-                      <div class="control is-expanded">
-                        <input class="input" type="text" id="beerStyle" placeholder="e.g., IPA, Lager, Stout" />
-                      </div>
-                      <div class="control">
-                        <button class="button is-primary" onclick="sendBeerStyle()">Set</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="column">
-                <div class="field">
-                  <label class="label">Keg Date <span style="color: #ff3860;">*</span></label>
-                  <p class="help" id="kegDateHelp">Day.Month.Year</p>
-                  <div class="control">
-                    <div class="field has-addons">
-                      <div class="control is-expanded">
-                        <input class="input" type="text" id="kegDate" placeholder="e.g. 25.03.2025" />
-                      </div>
-                      <div class="control">
-                        <button class="button is-primary" onclick="sendKegDate()">Set</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="columns">
-              <div class="column">
-                <div class="field">
-                  <label class="label">OG <span style="color: #ff3860;">*</span></label>
-                  <div class="control">
-                    <div class="field has-addons">
-                      <div class="control is-expanded">
-                        <input class="input" type="text" id="og" placeholder="e.g., 1.050" />
-                      </div>
-                      <div class="control">
-                        <button class="button is-primary" onclick="sendOG()">Set</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div class="column">
-                <div class="field">
-                  <label class="label">FG <span style="color: #ff3860;">*</span></label>
-                  <div class="control">
-                    <div class="field has-addons">
-                      <div class="control is-expanded">
-                        <input class="input" type="text" id="fg" placeholder="e.g., 1.010" />
-                      </div>
-                      <div class="control">
-                        <button class="button is-primary" onclick="sendFG()">Set</button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="field">
-              <label class="label">ABV <span style="color: #ff3860;">*</span></label>
-              <p class="help">Calculated from OG and FG using formula: (OG - FG) × 131.25</p>
-              <div class="control">
-                <div class="field has-addons">
-                  <div class="control is-expanded">
-                    <input class="input" type="text" id="abv" placeholder="--" readonly />
-                  </div>
-                  <div class="control">
-                    <span class="button is-static">%</span>
-                  </div>
-                  <div class="control">
-                    <button class="button is-primary" onclick="calculateABV()">Calculate</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <p class="help has-text-warning-dark">
-              <span style="color: #ff3860;">*</span> Beer information is not stored in the keg since there is no feedback pin to read. It is stored in the Open Plaato Keg database.
+            <p class="help" style="margin-bottom: 1rem;">
+              Beverage recipe details now live in the <a href="/beverages.html">Beverage Library</a>. Date kegged and expiration date are managed from <a href="/taplist-setup.html">Tap Setup</a>.
             </p>
 
             <div class="field">
@@ -441,113 +354,35 @@
       const kegIdSelect = document.getElementById("kegId");
       const connectionStatus = document.getElementById("connectionStatus");
       let currentKegData = {};
-      let allBeverages = [];
 
-      async function loadBeverages() {
-        try {
-          const res = await fetch("/api/beverages");
-          if (!res.ok) throw new Error(await res.text());
-          allBeverages = await res.json();
-
-          const sel = document.getElementById("beverageSelect");
-          if (!sel) return;
-
-          sel.innerHTML = '<option value="">— select a beverage —</option>';
-          allBeverages.forEach((bev) => {
-            const opt = document.createElement("option");
-            opt.value = bev.id;
-            opt.dataset.beverage = JSON.stringify(bev);
-            opt.textContent = `${bev.name || "Unnamed"}${bev.style ? " · " + bev.style : ""}`;
-            sel.appendChild(opt);
-          });
-        } catch (e) {
-          // Non-fatal: user can still fill fields manually.
-          showToast("Failed to load beverages: " + e.message, "danger");
-        }
+      function getFallbackScaleName(index) {
+        return `Scale ${index + 1}`;
       }
 
-      function parseFullNumber(str) {
-        const s = (str ?? "").toString().trim();
-        if (s === "") return null;
-        // Avoid partial parses like "1.05x".
-        if (!/^-?\d+(\.\d+)?$/.test(s)) return null;
-        return parseFloat(s);
-      }
-
-      function computeAbvFromOgFg(ogStr, fgStr) {
-        const og = parseFullNumber(ogStr);
-        const fg = parseFullNumber(fgStr);
-        if (og == null || fg == null) return "";
-        const abv = (og - fg) * 131.25;
-        const abvRounded = Math.round(abv * 100) / 100;
-        return abvRounded.toFixed(2).replace(/\.00$/, "");
-      }
-
-      function formatTodayKegDate() {
-        const now = new Date();
-        const dd = String(now.getDate()).padStart(2, "0");
-        const mm = String(now.getMonth() + 1).padStart(2, "0");
-        const yyyy = now.getFullYear();
-
-        const help = document.getElementById("kegDateHelp")?.textContent || "";
-        // Mirror updateUnitLabels(): Metric => Day.Month.Year, US => Month.Day.Year
-        // We must not use a loose `includes("Month.")` because Metric text also contains "Month."
-        const isUSFormat = help.trim().startsWith("Month.") || help.includes("Month.Day");
-
-        return isUSFormat ? `${mm}.${dd}.${yyyy}` : `${dd}.${mm}.${yyyy}`;
-      }
-
-      function loadFromBeverage() {
-        const sel = document.getElementById("beverageSelect");
-        if (!sel) return;
-
-        const selectedOpt = sel.options[sel.selectedIndex];
-        if (!selectedOpt || !selectedOpt.dataset.beverage) return;
-
-        const bev = JSON.parse(selectedOpt.dataset.beverage);
-
-        const beerStyleEl = document.getElementById("beerStyle");
-        const kegDateEl = document.getElementById("kegDate");
-        const ogEl = document.getElementById("og");
-        const fgEl = document.getElementById("fg");
-        const abvEl = document.getElementById("abv");
-
-        if (beerStyleEl) beerStyleEl.value = (bev.style || bev.beer_style || "").trim();
-        if (kegDateEl) kegDateEl.value = formatTodayKegDate();
-        if (ogEl) ogEl.value = (bev.og || "").trim();
-        if (fgEl) fgEl.value = (bev.fg || bev.sg || "").trim();
-
-        const abvFromBev = (bev.abv || "").toString().trim();
-        const abvComputed = computeAbvFromOgFg(bev.og, bev.fg);
-        if (abvEl) abvEl.value = abvFromBev || abvComputed || "";
-
-        beerStyleEl?.focus?.();
-      }
-
-      // Load connected kegs
+      // Load connected scales
       function loadConnectedKegs() {
         const currentValue = kegIdSelect.value; // Preserve current selection
 
         fetch("/api/kegs/connected")
           .then((response) => response.json())
           .then((kegs) => {
-            kegIdSelect.innerHTML = '<option value="">Select a connected keg...</option>';
+            kegIdSelect.innerHTML = '<option value="">Select a connected scale...</option>';
 
             if (kegs.length === 0) {
-              connectionStatus.textContent = "No kegs connected";
+              connectionStatus.textContent = "No scales connected";
               connectionStatus.className = "help is-warning";
             } else {
               kegs.forEach((keg, index) => {
                 const option = document.createElement("option");
                 option.value = keg;
-                option.text = keg;
+                option.text = getFallbackScaleName(index);
                 // Restore selection or auto-select first keg if none selected
                 if (keg === currentValue || (!currentValue && index === 0)) {
                   option.selected = true;
                 }
                 kegIdSelect.appendChild(option);
               });
-              connectionStatus.textContent = `${kegs.length} keg(s) connected`;
+              connectionStatus.textContent = `${kegs.length} scale(s) connected`;
               connectionStatus.className = "help is-success";
 
               // Load data for auto-selected keg on first load
@@ -607,29 +442,11 @@
           updateFieldIfNotFocused("kegLabel", data.my_label.trim());
         }
 
-        // Beer style (stored locally as my_beer_style) - only update if not focused
-        if (data.my_beer_style) {
-          updateFieldIfNotFocused("beerStyle", data.my_beer_style.trim());
-        }
-
-        // Keg date (stored locally as my_keg_date) - only update if not focused
-        if (data.my_keg_date) {
-          updateFieldIfNotFocused("kegDate", data.my_keg_date.trim());
-        }
-
-        // OG (stored locally as my_og) - only update if not focused
-        if (data.my_og) {
-          updateFieldIfNotFocused("og", data.my_og.trim());
-        }
-
-        // FG (stored locally as my_fg) - only update if not focused
-        if (data.my_fg) {
-          updateFieldIfNotFocused("fg", data.my_fg.trim());
-        }
-
-        // ABV (stored locally as my_abv) - always update since it's readonly
-        if (data.my_abv) {
-          document.getElementById("abv").value = data.my_abv.trim();
+        if (data.my_display_mode) {
+          const displayMode = data.my_display_mode.trim();
+          if (displayMode) {
+            currentKegData.my_display_mode = displayMode;
+          }
         }
 
         // Known weight - only update if not focused
@@ -672,8 +489,8 @@
                 <td>${sensMap[data.sensitivity] || data.sensitivity || "Not set"}</td>
               </tr>
               <tr>
-                <td><strong>Beer Style</strong></td>
-                <td>${data.my_beer_style?.trim() || "Not set"}</td>
+                <td><strong>Dashboard Display</strong></td>
+                <td>${data.my_display_mode === "percent_primary" ? "Big percent / small weight" : "Big weight / small percent"}</td>
               </tr>
               <tr>
                 <td><strong>Temperature</strong></td>
@@ -766,7 +583,7 @@
       }
 
       function clearActiveButtons() {
-        document.querySelectorAll(".unit-btn, .measure-btn, .kegmode-btn, .sensitivity-btn")
+        document.querySelectorAll(".unit-btn, .measure-btn, .kegmode-btn, .sensitivity-btn, .displaymode-btn")
           .forEach(btn => btn.classList.remove("is-primary", "is-selected"));
       }
 
@@ -806,6 +623,10 @@
         // Sensitivity
         const sensId = `sens${data.sensitivity}`;
         document.getElementById(sensId)?.classList.add("is-primary", "is-selected");
+
+        const displayMode = data.my_display_mode === "percent_primary" ? "percent_primary" : "weight_primary";
+        const displayModeId = displayMode === "percent_primary" ? "displayModePercentPrimary" : "displayModeWeightPrimary";
+        document.getElementById(displayModeId)?.classList.add("is-primary", "is-selected");
       }
 
       // Listen for keg selection changes
@@ -818,11 +639,10 @@
           currentKegData = {};
           document.getElementById("tempOffset").value = "";
           document.getElementById("maxVolume").value = "";
-          document.getElementById("beerStyle").value = "";
-          document.getElementById("kegDate").value = "";
-          document.getElementById("og").value = "";
-          document.getElementById("fg").value = "";
-          document.getElementById("abv").value = "";
+          document.getElementById("kegLabel").value = "";
+          document.getElementById("emptyKegWeight").value = "";
+          document.getElementById("knownWeight").value = "";
+          document.getElementById("tempOffset").value = "";
           document.getElementById("currentSettings").innerHTML =
             '<p class="has-text-grey">Select a keg to view current settings</p>';
           clearActiveButtons();
@@ -858,7 +678,6 @@
 
       loadConnectedKegs();
       setInterval(loadConnectedKegs, 10000);
-      loadBeverages();
 
       function getSelectedKeg() {
         const kegId = kegIdSelect.value;
@@ -990,86 +809,15 @@
         sendCommand("max-keg-volume", { value });
       }
 
-      // Beer info commands
       function sendKegLabel() {
         const value = document.getElementById("kegLabel").value;
         sendCommand("label", { value });
       }
 
-      function sendBeerStyle() {
-        const value = document.getElementById("beerStyle").value;
-        if (!value) { showToast("Please enter a beer style", "warning"); return; }
-        sendCommand("beer-style", { value });
+      function setDisplayMode(value) {
+        sendCommand("display-mode", { value });
       }
 
-      function sendKegDate() {
-        const value = document.getElementById("kegDate").value;
-        if (!value) { showToast("Please enter a date", "warning"); return; }
-        sendCommand("date", { value });
-      }
-
-      function validateGravity(value) {
-        // Validate format: 1.xxx (e.g., 1.050, 1.010)
-        const pattern = /^1\.\d{3}$/;
-        return pattern.test(value);
-      }
-
-      function sendOG() {
-        const value = document.getElementById("og").value;
-        if (!value) { showToast("Please enter an OG value", "warning"); return; }
-        if (!validateGravity(value)) { showToast("OG must be in format 1.xxx (e.g., 1.050)", "warning"); return; }
-        sendCommand("og", { value });
-      }
-
-      function sendFG() {
-        const value = document.getElementById("fg").value;
-        if (!value) { showToast("Please enter an FG value", "warning"); return; }
-        if (!validateGravity(value)) { showToast("FG must be in format 1.xxx (e.g., 1.010)", "warning"); return; }
-        sendCommand("fg", { value });
-      }
-
-      function calculateABV() {
-        const kegId = getSelectedKeg();
-        if (!kegId) return;
-
-        const og = document.getElementById("og").value;
-        const fg = document.getElementById("fg").value;
-
-        if (!og || !fg) {
-          showToast("Please enter both OG and FG values", "warning");
-          return;
-        }
-
-        if (!validateGravity(og)) {
-          showToast("OG must be in format 1.xxx (e.g., 1.050)", "warning");
-          return;
-        }
-
-        if (!validateGravity(fg)) {
-          showToast("FG must be in format 1.xxx (e.g., 1.010)", "warning");
-          return;
-        }
-
-        fetch(`/api/kegs/${kegId}/abv`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ og, fg }),
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.abv !== undefined) {
-              document.getElementById("abv").value = data.abv;
-              showToast(`ABV calculated: ${data.abv}%`, "success");
-            } else {
-              showToast(`Error: ${data.error}`, "danger");
-            }
-          })
-          .catch((err) => {
-            showToast(`Error: ${err.message}`, "danger");
-          });
-      }
-
-      // ABV commands
       // Settings commands
       function updateUnitLabels(unit) {
         const isUS = unit === "2" || unit === "us";
@@ -1078,11 +826,6 @@
         set("knownWeightUnit",    isUS ? "lbs" : "kg");
         set("tempOffsetUnit",     isUS ? "°F"  : "°C");
         set("maxVolumeUnit",      isUS ? "gal" : "L");
-        // Keg date format: metric = Day.Month.Year, imperial = Month.Day.Year
-        const kegDateEl = document.getElementById("kegDate");
-        const kegDateHelp = document.getElementById("kegDateHelp");
-        if (kegDateEl) kegDateEl.placeholder = isUS ? "e.g. 03.25.2025" : "e.g. 25.03.2025";
-        if (kegDateHelp) kegDateHelp.textContent = isUS ? "Month.Day.Year" : "Day.Month.Year";
       }
 
       function setUnit(value) {
