@@ -142,6 +142,59 @@
             const isLow = percentLeft < 20;
             const fillPct = Math.min(100, Math.max(0, percentLeft)).toFixed(1);
 
+            // CO2 bottle SVG — replaces the flat volume + progress bar for CO2 mode
+            let volumeSection;
+            if (isCO2) {
+                // Bottle path: neck (x=40–60) narrows into body (x=18–82), rounded bottom
+                const bottlePath = "M40,15 L60,15 L60,37 Q80,47 82,58 L82,152 Q82,162 70,162 L30,162 Q18,162 18,152 L18,58 Q20,47 40,37 Z";
+                // Fill from bottom up; entire path height = y15 to y162 = 147 units
+                const fillH = Math.max(0, (Math.min(100, percentLeft) / 100) * 147).toFixed(1);
+                const fillY = (162 - parseFloat(fillH)).toFixed(1);
+                // Unique clip-path ID per keg
+                const cid = 'bcl' + kegData.id;
+                volumeSection = `
+                    <div class="keg-bottle-section">
+                        <svg class="co2-bottle-svg" viewBox="0 0 100 172" xmlns="http://www.w3.org/2000/svg" aria-label="CO2 level: ${percentLeft.toFixed(0)}%">
+                            <defs>
+                                <clipPath id="${cid}">
+                                    <path d="${bottlePath}"/>
+                                </clipPath>
+                            </defs>
+                            <!-- Dark bottle interior -->
+                            <path d="${bottlePath}" class="co2-bottle-bg"/>
+                            <!-- Gas fill level -->
+                            <rect x="14" y="${fillY}" width="74" height="${fillH}" clip-path="url(#${cid})" class="co2-bottle-fill${isLow ? ' is-low' : ''}"/>
+                            <!-- Subtle left-edge gloss -->
+                            <rect x="18" y="62" width="10" height="70" rx="5" clip-path="url(#${cid})" class="co2-bottle-gloss"/>
+                            <!-- Bottle outline -->
+                            <path d="${bottlePath}" class="co2-bottle-stroke"/>
+                            <!-- Neck side lines -->
+                            <line x1="40" y1="15" x2="40" y2="37" class="co2-neck-line"/>
+                            <line x1="60" y1="15" x2="60" y2="37" class="co2-neck-line"/>
+                            <!-- Valve cap -->
+                            <rect x="36" y="3" width="28" height="14" rx="5" class="co2-valve"/>
+                            <line x1="50" y1="3" x2="50" y2="17" class="co2-valve-divider"/>
+                            <!-- Amount + unit + percent, centered in bottle body -->
+                            <text x="50" y="100" text-anchor="middle" dominant-baseline="central" class="co2-amount">${amountLeft.toFixed(1)}</text>
+                            <text x="50" y="118" text-anchor="middle" dominant-baseline="central" class="co2-unit">${volumeUnit}</text>
+                            <text x="50" y="136" text-anchor="middle" dominant-baseline="central" class="co2-pct${isLow ? ' is-low' : ''}">${percentLeft.toFixed(0)}%</text>
+                        </svg>
+                    </div>
+                `;
+            } else {
+                volumeSection = `
+                    <div class="keg-volume">
+                        <span class="keg-volume-number">${amountLeft.toFixed(2)}</span><span class="keg-volume-unit">${volumeUnit}</span>
+                    </div>
+                    <div class="keg-remaining">
+                        <div class="keg-progress-track">
+                            <div class="keg-progress-fill${isLow ? ' is-low' : ''}" style="width:${fillPct}%"></div>
+                        </div>
+                        <div class="keg-remaining-text">${percentLeft.toFixed(1)}% remaining</div>
+                    </div>
+                `;
+            }
+
             const card = `
                 <div class="card keg-card${isCO2 ? ' is-co2' : ''}" data-keg-id="${kegData.id}">
                     <div class="keg-header">
@@ -154,15 +207,7 @@
                             <span class="keg-temp-badge">${!isNaN(temperature) ? temperature.toFixed(1) + tempUnit : '--'}</span>
                         </div>
                     </div>
-                    <div class="keg-volume">
-                        <span class="keg-volume-number">${amountLeft.toFixed(2)}</span><span class="keg-volume-unit">${volumeUnit}</span>
-                    </div>
-                    <div class="keg-remaining">
-                        <div class="keg-progress-track">
-                            <div class="keg-progress-fill${isLow ? ' is-low' : ''}" style="width:${fillPct}%"></div>
-                        </div>
-                        <div class="keg-remaining-text">${percentLeft.toFixed(1)}% ${isCO2 ? 'CO\u2082 remaining' : 'remaining'}</div>
-                    </div>
+                    ${volumeSection}
                     ${!isCO2 && lastPour > 0 ? `<div class="keg-footer"><span class="keg-last-pour">Last pour · ${Math.round(pourValue)} ${pourUnit}</span></div>` : ''}
                 </div>
             `;
