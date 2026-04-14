@@ -711,6 +711,20 @@ body {
   background: linear-gradient(145deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%);
   position: relative;
   overflow: hidden;
+  cursor: grab;
+}
+
+#kegContainer .column.is-dragging {
+  opacity: 0.6;
+}
+
+#kegContainer .column.drag-over .card {
+  outline: 2px dashed rgba(245, 158, 11, 0.6);
+  outline-offset: 4px;
+}
+
+#kegContainer .card:active {
+  cursor: grabbing;
 }
 
 /* Redesigned keg card layout */

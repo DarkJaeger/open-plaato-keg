@@ -92,6 +92,7 @@
       });
 
         const kegContainer = document.getElementById('kegContainer');
+        let dragSourceColumn = null;
 
         function escapeHtml(text) {
             const div = document.createElement('div');
@@ -112,9 +113,104 @@
             return 'Scale';
         }
 
+        function sortKegs(kegs) {
+            const ordered = [...kegs];
+            ordered.sort((a, b) => {
+                const aOrder = Number.parseInt(a.my_sort_order ?? '', 10);
+                const bOrder = Number.parseInt(b.my_sort_order ?? '', 10);
+                const aHas = Number.isFinite(aOrder);
+                const bHas = Number.isFinite(bOrder);
+                if (aHas && bHas && aOrder !== bOrder) return aOrder - bOrder;
+                if (aHas !== bHas) return aHas ? -1 : 1;
+                return String(a.id || '').localeCompare(String(b.id || ''));
+            });
+            return ordered;
+        }
+
+        function persistKegOrder() {
+            const orderedIds = Array.from(kegContainer.querySelectorAll('[data-keg-id]'))
+                .map(card => card.getAttribute('data-keg-id'))
+                .filter(Boolean);
+
+            if (!orderedIds.length) return;
+
+            fetch('/api/kegs/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ordered_ids: orderedIds }),
+            }).catch(err => {
+                console.error('Error saving keg order:', err);
+            });
+        }
+
+        function attachDragHandlers(column) {
+            if (!column) return;
+            column.draggable = true;
+
+            column.addEventListener('dragstart', () => {
+                dragSourceColumn = column;
+                column.classList.add('is-dragging');
+            });
+
+            column.addEventListener('dragend', () => {
+                column.classList.remove('is-dragging');
+                dragSourceColumn = null;
+                kegContainer.querySelectorAll('.column').forEach(col => col.classList.remove('drag-over'));
+                persistKegOrder();
+            });
+
+            column.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                if (!dragSourceColumn || dragSourceColumn === column) return;
+                column.classList.add('drag-over');
+            });
+
+            column.addEventListener('dragleave', () => {
+                column.classList.remove('drag-over');
+            });
+
+            column.addEventListener('drop', (event) => {
+                event.preventDefault();
+                column.classList.remove('drag-over');
+                if (!dragSourceColumn || dragSourceColumn === column) return;
+
+                const columns = Array.from(kegContainer.children);
+                const sourceIndex = columns.indexOf(dragSourceColumn);
+                const targetIndex = columns.indexOf(column);
+
+                if (sourceIndex < targetIndex) {
+                    kegContainer.insertBefore(dragSourceColumn, column.nextSibling);
+                } else {
+                    kegContainer.insertBefore(dragSourceColumn, column);
+                }
+            });
+        }
+
+        function reorderColumnsInDom() {
+            const sortedColumns = Array.from(kegContainer.querySelectorAll('.column'))
+                .sort((a, b) => {
+                    const aOrder = Number.parseInt(a.getAttribute('data-sort-order') ?? '', 10);
+                    const bOrder = Number.parseInt(b.getAttribute('data-sort-order') ?? '', 10);
+                    const aHas = Number.isFinite(aOrder);
+                    const bHas = Number.isFinite(bOrder);
+                    if (aHas && bHas && aOrder !== bOrder) return aOrder - bOrder;
+                    if (aHas !== bHas) return aHas ? -1 : 1;
+                    const aId = a.querySelector('[data-keg-id]')?.getAttribute('data-keg-id') || '';
+                    const bId = b.querySelector('[data-keg-id]')?.getAttribute('data-keg-id') || '';
+                    return aId.localeCompare(bId);
+                });
+
+            sortedColumns.forEach(col => kegContainer.appendChild(col));
+        }
+
         function createKegCard(kegData, index = null) {
             const column = document.createElement('div');
             column.classList.add('column', 'is-half');
+            if (kegData.my_sort_order != null && kegData.my_sort_order !== '') {
+                column.setAttribute('data-sort-order', kegData.my_sort_order);
+            } else {
+                column.removeAttribute('data-sort-order');
+            }
 
             const amountLeft = parseFloat(kegData.amount_left) || 0;
             const temperature = parseFloat(kegData.keg_temperature);
@@ -238,6 +334,7 @@
                 </div>
             `;
             column.innerHTML = card;
+            attachDragHandlers(column);
             return column;
         }
 
@@ -273,7 +370,7 @@
                 if (kegs.length === 0) {
                     kegContainer.innerHTML = '<div class="column"><p class="has-text-grey">No kegs found. Connect a keg to see data here.</p></div>';
                 } else {
-                    kegs.forEach((keg, index) => {
+                    sortKegs(kegs).forEach((keg, index) => {
                         kegContainer.appendChild(createKegCard(keg, index));
                     });
                 }
@@ -345,9 +442,17 @@
                     const index = col ? Array.from(kegContainer.children).indexOf(col) : null;
                     const newCard = createKegCard(updatedKeg, index);
                     existingCard.innerHTML = newCard.querySelector('.card').innerHTML;
+                    if (col) {
+                        if (updatedKeg.my_sort_order != null && updatedKeg.my_sort_order !== '') {
+                            col.setAttribute('data-sort-order', updatedKeg.my_sort_order);
+                        } else {
+                            col.removeAttribute('data-sort-order');
+                        }
+                    }
                 } else if (kegId) {
                     kegContainer.appendChild(createKegCard(updatedKeg, kegContainer.children.length));
                 }
+                reorderColumnsInDom();
             }
         });
 

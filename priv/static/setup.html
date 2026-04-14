@@ -401,7 +401,20 @@
 
         fetch("/api/kegs/connected")
           .then((response) => response.json())
-          .then((kegs) => {
+          .then(async (kegs) => {
+            let labelMap = {};
+            try {
+              const allKegsResponse = await fetch("/api/kegs");
+              if (allKegsResponse.ok) {
+                const allKegs = await allKegsResponse.json();
+                allKegs.forEach((keg, index) => {
+                  labelMap[keg.id] = (keg.my_label || "").trim() || `Scale ${index + 1}`;
+                });
+              }
+            } catch (_) {
+              // Fall back to generic names below if lookup fails.
+            }
+
             kegIdSelect.innerHTML = '<option value="">Select a connected scale...</option>';
 
             if (kegs.length === 0) {
@@ -411,7 +424,7 @@
               kegs.forEach((keg, index) => {
                 const option = document.createElement("option");
                 option.value = keg;
-                option.text = getFallbackScaleName(index);
+                option.text = labelMap[keg] || `Scale ${index + 1}`;
                 // Restore selection or auto-select first keg if none selected
                 if (keg === currentValue || (!currentValue && index === 0)) {
                   option.selected = true;

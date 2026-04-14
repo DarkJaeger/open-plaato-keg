@@ -285,6 +285,28 @@ defmodule OpenPlaatoKeg.HttpRouter do
     end
   end
 
+  post "api/kegs/order" do
+    ordered_ids =
+      case (conn.body_params || %{})["ordered_ids"] do
+        ids when is_list(ids) -> ids
+        _ -> []
+      end
+
+    if ordered_ids == [] do
+      json_response(conn, 400, %{error: "ordered_ids must be a non-empty array"})
+    else
+      ordered_ids
+      |> Enum.map(&Kernel.to_string/1)
+      |> Enum.with_index()
+      |> Enum.each(fn {keg_id, index} ->
+        KegData.publish(keg_id, [{:my_sort_order, Integer.to_string(index)}])
+        WebSocketHandler.publish(keg_id, [])
+      end)
+
+      json_response(conn, 200, %{status: "ok", ordered_ids: ordered_ids})
+    end
+  end
+
   # ============================================
   # Monitor Commands
   # ============================================
