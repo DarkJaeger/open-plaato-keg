@@ -1041,9 +1041,15 @@ defmodule OpenPlaatoKeg.HttpRouter do
           Logger.warning("Watchtower returned #{status}: #{inspect(body)}", [])
           json_response(conn, 502, %{error: "watchtower_error", status: status})
 
+        {:error, %{reason: reason}} ->
+          msg = Exception.message(reason)
+          Logger.error("Watchtower request failed: #{msg}", [])
+          json_response(conn, 502, %{error: "request_failed", detail: msg})
+
         {:error, reason} ->
-          Logger.error("Watchtower request failed: #{inspect(reason)}", [])
-          json_response(conn, 502, %{error: "request_failed"})
+          msg = inspect(reason)
+          Logger.error("Watchtower request failed: #{msg}", [])
+          json_response(conn, 502, %{error: "request_failed", detail: msg})
       end
     end
   end

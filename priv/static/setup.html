@@ -1206,7 +1206,8 @@
             status.textContent = 'Update triggered. Watchtower will pull and restart the container shortly.';
             status.className = 'help has-text-success';
           } else {
-            status.textContent = data.error || 'Update failed';
+            const detail = data.detail ? ` (${data.detail})` : '';
+            status.textContent = (data.error || 'Update failed') + detail;
             status.className = 'help has-text-danger';
           }
         } catch (err) {
