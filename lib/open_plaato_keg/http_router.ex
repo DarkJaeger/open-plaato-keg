@@ -1021,6 +1021,61 @@ defmodule OpenPlaatoKeg.HttpRouter do
   end
 
   # ============================================
+  # Watchtower / Software Update
+  # ============================================
+
+  get "api/config/watchtower" do
+    url = OpenPlaatoKeg.AppConfig.get(:watchtower_url, "")
+    token = OpenPlaatoKeg.AppConfig.get(:watchtower_token, "")
+    json_response(conn, 200, %{url: url, has_token: token != ""})
+  end
+
+  post "api/config/watchtower" do
+    p = conn.body_params || %{}
+    url = to_string(p["url"] || "") |> String.trim()
+    token = to_string(p["token"] || "") |> String.trim()
+
+    OpenPlaatoKeg.AppConfig.put(:watchtower_url, url)
+    OpenPlaatoKeg.AppConfig.put(:watchtower_token, token)
+
+    json_response(conn, 200, %{status: "ok", url: url, has_token: token != ""})
+  end
+
+  post "api/system/update" do
+    url = OpenPlaatoKeg.AppConfig.get(:watchtower_url, "")
+    token = OpenPlaatoKeg.AppConfig.get(:watchtower_token, "")
+
+    if url == "" do
+      json_response(conn, 400, %{error: "watchtower_url not configured"})
+    else
+      headers =
+        if token != "",
+          do: [{"Authorization", "Bearer #{token}"}],
+          else: []
+
+      case Req.post("#{url}/v1/update", headers: headers) do
+        {:ok, %{status: status}} when status in 200..299 ->
+          Logger.info("Watchtower update triggered successfully", [])
+          json_response(conn, 200, %{status: "ok"})
+
+        {:ok, %{status: status, body: body}} ->
+          Logger.warning("Watchtower returned #{status}: #{inspect(body)}", [])
+          json_response(conn, 502, %{error: "watchtower_error", status: status})
+
+        {:error, %{reason: reason}} ->
+          msg = Exception.message(reason)
+          Logger.error("Watchtower request failed: #{msg}", [])
+          json_response(conn, 502, %{error: "request_failed", detail: msg})
+
+        {:error, reason} ->
+          msg = inspect(reason)
+          Logger.error("Watchtower request failed: #{msg}", [])
+          json_response(conn, 502, %{error: "request_failed", detail: msg})
+      end
+    end
+  end
+
+  # ============================================
   # Other Endpoints
   # ============================================
 
