@@ -923,6 +923,84 @@ body {
   background: linear-gradient(90deg, #22c55e, #16a34a);
 }
 
+/* CO2 bottle SVG */
+.keg-bottle-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid rgba(34, 197, 94, 0.1);
+  border-bottom: 1px solid rgba(34, 197, 94, 0.1);
+}
+
+.co2-bottle-svg {
+  width: 90px;
+  height: auto;
+}
+
+.co2-bottle-bg {
+  fill: rgba(0, 0, 0, 0.45);
+}
+
+.co2-bottle-fill {
+  fill: rgba(34, 197, 94, 0.65);
+}
+
+.co2-bottle-fill.is-low {
+  fill: rgba(239, 68, 68, 0.65);
+}
+
+.co2-bottle-gloss {
+  fill: rgba(255, 255, 255, 0.055);
+}
+
+.co2-bottle-stroke {
+  fill: none;
+  stroke: rgba(34, 197, 94, 0.55);
+  stroke-width: 1.5;
+}
+
+.co2-neck-line {
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 0.8;
+}
+
+.co2-valve {
+  fill: rgba(148, 163, 184, 0.45);
+  stroke: rgba(148, 163, 184, 0.75);
+  stroke-width: 1;
+}
+
+.co2-valve-divider {
+  stroke: rgba(148, 163, 184, 0.35);
+  stroke-width: 0.8;
+}
+
+.co2-amount {
+  font-family: var(--font-mono);
+  font-size: 19px;
+  font-weight: 700;
+  fill: rgba(254, 252, 232, 0.95);
+}
+
+.co2-unit {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  fill: rgba(254, 252, 232, 0.45);
+}
+
+.co2-pct {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: rgba(34, 197, 94, 0.65);
+  letter-spacing: 0.05em;
+}
+
+.co2-pct.is-low {
+  fill: rgba(239, 68, 68, 0.75);
+}
+
 .co2-badge {
   font-size: 0.7rem;
   font-weight: 700;
