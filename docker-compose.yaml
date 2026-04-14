@@ -16,6 +16,22 @@ services:
     ports:
       - 8080:8080
 
+  open_plaato_keg:
+    image: ghcr.io/darkjaeger/open-plaato-keg:latest
+    container_name: open_plaato_keg
+    ports:
+      - 1234:1234
+      - 8085:8085
+    restart: always
+    volumes:
+      # Persist keg data across container updates.
+      # Unraid: change host path to /mnt/user/appdata/open-plaato-keg:/db
+      - ./data:/db
+    environment:
+      - DATABASE_FILE_PATH=/db/keg_data.bin
+      - KEG_LISTENER_PORT=1234
+      - HTTP_LISTENER_PORT=8085
+
   vernemq:
     image: erlio/docker-vernemq:latest
     container_name: vernemq

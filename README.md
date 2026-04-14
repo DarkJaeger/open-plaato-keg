@@ -129,6 +129,12 @@ services:
       - 1234:1234
       - 8085:8085
     restart: always
+    volumes:
+      # Persist the database across container updates — without this your
+      # keg data will be lost every time the container is recreated.
+      # Unraid users: change the host path to your appdata share, e.g.
+      #   /mnt/user/appdata/open-plaato-keg:/db
+      - ./data:/db
     environment:
       - DATABASE_FILE_PATH=/db/keg_data.bin
       - KEG_LISTENER_PORT=1234
