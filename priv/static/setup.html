@@ -1201,11 +1201,11 @@
         status.textContent = '';
         try {
           const res = await fetch('/api/system/update', { method: 'POST' });
-          const data = await res.json();
           if (res.ok) {
             status.textContent = 'Update triggered. Watchtower will pull and restart the container shortly.';
             status.className = 'help has-text-success';
           } else {
+            const data = await res.json().catch(() => ({}));
             const detail = data.detail ? ` (${data.detail})` : '';
             status.textContent = (data.error || 'Update failed') + detail;
             status.className = 'help has-text-danger';
