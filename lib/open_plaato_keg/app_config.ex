@@ -1,7 +1,13 @@
 defmodule OpenPlaatoKeg.AppConfig do
   require Logger
 
-  @defaults %{airlock_enabled: true, brewfather_user_id: "", brewfather_api_key: ""}
+  @defaults %{
+    airlock_enabled: true,
+    brewfather_user_id: "",
+    brewfather_api_key: "",
+    watchtower_url: "",
+    watchtower_token: ""
+  }
 
   @doc "Load persisted config from disk into Application env. Call once at startup."
   def load do
@@ -13,7 +19,9 @@ defmodule OpenPlaatoKeg.AppConfig do
             loaded = %{
               airlock_enabled: Map.get(map, "airlock_enabled", @defaults.airlock_enabled),
               brewfather_user_id: Map.get(map, "brewfather_user_id", @defaults.brewfather_user_id),
-              brewfather_api_key: Map.get(map, "brewfather_api_key", @defaults.brewfather_api_key)
+              brewfather_api_key: Map.get(map, "brewfather_api_key", @defaults.brewfather_api_key),
+              watchtower_url: Map.get(map, "watchtower_url", @defaults.watchtower_url),
+              watchtower_token: Map.get(map, "watchtower_token", @defaults.watchtower_token)
             }
             Application.put_env(:open_plaato_keg, :app_config, Map.merge(@defaults, loaded))
 
