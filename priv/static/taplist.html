@@ -45,7 +45,7 @@
     .header-icon  { font-size: 1.6rem; }
 
     .header-title {
-      font-family: var(--font-serif);
+      font-family: var(--taplist-title-font, var(--font-serif));
       font-size: 1.5rem;
       font-weight: bold;
       color: var(--gold-light);
@@ -206,7 +206,7 @@
     }
 
     .beer-name {
-      font-family: var(--font-serif);
+      font-family: var(--taplist-title-font, var(--font-serif));
       font-size: 2.4rem;
       font-weight: bold;
       color: var(--text);
@@ -214,6 +214,7 @@
     }
 
     .brewery-name {
+      font-family: var(--taplist-body-font, var(--font-sans));
       font-size: 1.1rem;
       color: var(--text-muted);
       margin-top: -0.3rem;
@@ -238,12 +239,14 @@
     }
 
     .beer-desc {
+      font-family: var(--taplist-body-font, var(--font-sans));
       font-size: 1rem;
       color: var(--text-muted);
       line-height: 1.6;
     }
 
     .tasting-notes {
+      font-family: var(--taplist-body-font, var(--font-sans));
       font-size: 1rem;
       color: var(--text-muted);
       font-style: italic;

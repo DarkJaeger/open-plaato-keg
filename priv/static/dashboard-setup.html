@@ -50,8 +50,10 @@
         font-weight: 700; font-size: 1.1rem; flex-shrink: 0;
         transition: background 0.3s, color 0.3s;
       }
+      .preview-tap-copy { min-width: 0; }
       .preview-tap-name { font-weight: 600; font-size: 1rem; }
       .preview-tap-sub { font-size: 0.78rem; opacity: 0.55; }
+      .preview-tap-desc { font-size: 0.8rem; opacity: 0.75; margin-top: 0.35rem; line-height: 1.5; }
       .bg-image-preview { max-width: 100%; max-height: 160px; border-radius: 8px; display: block; margin-bottom: 0.75rem; object-fit: cover; }
       .section-card { margin-bottom: 1.5rem; }
       input[type="range"] { width: 100%; accent-color: var(--amber-400, #f59e0b); }
@@ -180,6 +182,51 @@
                       </div>
                     </div>
                   </div>
+
+                  <div class="field">
+                    <label class="label">Tap List Title Font</label>
+                    <div class="control">
+                      <div class="select is-fullwidth">
+                        <select id="taplistTitleFont">
+                          <option value="">Use Tap List Default</option>
+                          <option value="Outfit">Outfit</option>
+                          <option value="Inter">Inter</option>
+                          <option value="Roboto">Roboto</option>
+                          <option value="Nunito">Nunito</option>
+                          <option value="Ubuntu">Ubuntu</option>
+                          <option value="Lato">Lato</option>
+                          <option value="Space Grotesk">Space Grotesk</option>
+                          <option value="Playfair Display">Playfair Display</option>
+                          <option value="Merriweather">Merriweather</option>
+                          <option value="Bebas Neue">Bebas Neue</option>
+                          <option value="System">System Default</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p class="help">Used for tap names and the tap list header.</p>
+                  </div>
+
+                  <div class="field">
+                    <label class="label">Tap List Description Font</label>
+                    <div class="control">
+                      <div class="select is-fullwidth">
+                        <select id="taplistBodyFont">
+                          <option value="">Use Global Font</option>
+                          <option value="Outfit">Outfit</option>
+                          <option value="Inter">Inter</option>
+                          <option value="Roboto">Roboto</option>
+                          <option value="Nunito">Nunito</option>
+                          <option value="Ubuntu">Ubuntu</option>
+                          <option value="Lato">Lato</option>
+                          <option value="Space Grotesk">Space Grotesk</option>
+                          <option value="Merriweather">Merriweather</option>
+                          <option value="Source Sans 3">Source Sans 3</option>
+                          <option value="System">System Default</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p class="help">Used for brewery, description, and tasting notes on the tap list.</p>
+                  </div>
                 </div>
               </div>
 
@@ -281,9 +328,10 @@
                     <!-- Mock tap list row -->
                     <div class="preview-tap-row" id="previewTapRow">
                       <div class="preview-tap-badge" id="pvBadge">1</div>
-                      <div>
+                      <div class="preview-tap-copy">
                         <div class="preview-tap-name" id="pvTapName">Pale Ale</div>
                         <div class="preview-tap-sub">Homebrew · 5.4% ABV · 32 IBU</div>
+                        <div class="preview-tap-desc" id="pvTapDesc">Bright citrus, soft malt, and a clean finish.</div>
                       </div>
                     </div>
 
@@ -304,6 +352,8 @@
         card_bg:      '#0f172a',
         text_color:   '#dfdfdf',
         font_family:  'Outfit',
+        taplist_title_font: '',
+        taplist_body_font: '',
         bg_image:     false,
         bg_opacity:   15
       };
@@ -328,6 +378,8 @@
       syncPair('textColor',   'textHex');
 
       document.getElementById('fontFamily').addEventListener('change', updatePreview);
+      document.getElementById('taplistTitleFont').addEventListener('change', updatePreview);
+      document.getElementById('taplistBodyFont').addEventListener('change', updatePreview);
 
       // ── Opacity slider ───────────────────────────────────
       const opacitySlider = document.getElementById('bgOpacity');
@@ -344,11 +396,15 @@
         const text    = document.getElementById('textHex').value    || DEFAULTS.text_color;
         const opacity = parseInt(opacitySlider.value) / 100;
         const font    = document.getElementById('fontFamily').value;
+        const taplistTitleFont = document.getElementById('taplistTitleFont').value;
+        const taplistBodyFont = document.getElementById('taplistBodyFont').value;
 
         const pa = document.getElementById('previewArea');
         const pc = document.getElementById('previewCard');
         const pt = document.getElementById('previewTapRow');
         const badge = document.getElementById('pvBadge');
+        const tapName = document.getElementById('pvTapName');
+        const tapDesc = document.getElementById('pvTapDesc');
 
         // Area background
         if (hasBgImage) {
@@ -375,7 +431,19 @@
         const fontStack = font === 'System'
           ? '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
           : `"${font}", -apple-system, BlinkMacSystemFont, sans-serif`;
+        const tapTitleStack = !taplistTitleFont
+          ? 'Georgia, "Times New Roman", serif'
+          : taplistTitleFont === 'System'
+            ? '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+            : `"${taplistTitleFont}", -apple-system, BlinkMacSystemFont, sans-serif`;
+        const tapBodyStack = !taplistBodyFont
+          ? fontStack
+          : taplistBodyFont === 'System'
+            ? '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+            : `"${taplistBodyFont}", -apple-system, BlinkMacSystemFont, sans-serif`;
         pa.style.fontFamily = fontStack;
+        tapName.style.fontFamily = tapTitleStack;
+        tapDesc.style.fontFamily = tapBodyStack;
       }
 
       // ── Background image upload ──────────────────────────
@@ -454,6 +522,8 @@
           card_bg:      document.getElementById('cardBgHex').value,
           text_color:   document.getElementById('textHex').value,
           font_family:  document.getElementById('fontFamily').value,
+          taplist_title_font: document.getElementById('taplistTitleFont').value,
+          taplist_body_font: document.getElementById('taplistBodyFont').value,
           bg_image:     hasBgImage,
           bg_opacity:   parseInt(opacitySlider.value)
         };
@@ -520,6 +590,12 @@
           }
           if (t.font_family) {
             document.getElementById('fontFamily').value = t.font_family;
+          }
+          if (t.taplist_title_font != null) {
+            document.getElementById('taplistTitleFont').value = t.taplist_title_font;
+          }
+          if (t.taplist_body_font != null) {
+            document.getElementById('taplistBodyFont').value = t.taplist_body_font;
           }
           if (t.bg_opacity != null) {
             opacitySlider.value = t.bg_opacity;

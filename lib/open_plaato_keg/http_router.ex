@@ -1508,6 +1508,8 @@ defmodule OpenPlaatoKeg.HttpRouter do
     card_bg = Map.get(theme, "card_bg", "")
     text = Map.get(theme, "text_color", "")
     font = Map.get(theme, "font_family", "")
+    taplist_title_font = Map.get(theme, "taplist_title_font", "")
+    taplist_body_font = Map.get(theme, "taplist_body_font", "")
     bg_image = Map.get(theme, "bg_image") in [true, "true"]
 
     bg_opacity =
@@ -1517,17 +1519,14 @@ defmodule OpenPlaatoKeg.HttpRouter do
       end
 
     font_import =
-      case font do
-        f when f in ["", "Outfit", nil] ->
-          ""
-
-        "System" ->
-          ""
-
-        f ->
-          encoded = String.replace(f, " ", "+")
-          "@import url('https://fonts.googleapis.com/css2?family=#{encoded}:wght@300;400;500;600;700&display=swap');\n"
-      end
+      [font, taplist_title_font, taplist_body_font]
+      |> Enum.reject(&(&1 in ["", "Outfit", nil, "System"]))
+      |> Enum.uniq()
+      |> Enum.map(fn f ->
+        encoded = String.replace(f, " ", "+")
+        "@import url('https://fonts.googleapis.com/css2?family=#{encoded}:wght@300;400;500;600;700&display=swap');\n"
+      end)
+      |> Enum.join()
 
     font_stack =
       case font do
@@ -1539,6 +1538,20 @@ defmodule OpenPlaatoKeg.HttpRouter do
 
         f ->
           "'#{f}', -apple-system, BlinkMacSystemFont, sans-serif"
+      end
+
+    taplist_title_stack =
+      case taplist_title_font do
+        f when f in ["", nil] -> "var(--font-serif)"
+        "System" -> "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        f -> "'#{f}', -apple-system, BlinkMacSystemFont, sans-serif"
+      end
+
+    taplist_body_stack =
+      case taplist_body_font do
+        f when f in ["", nil] -> "var(--font-sans)"
+        "System" -> "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+        f -> "'#{f}', -apple-system, BlinkMacSystemFont, sans-serif"
       end
 
     vars =
@@ -1592,7 +1605,14 @@ defmodule OpenPlaatoKeg.HttpRouter do
           v
         end
       end)
-      |> then(fn v -> v ++ ["  --font-sans: #{font_stack};"] end)
+      |> then(fn v ->
+        v ++
+          [
+            "  --font-sans: #{font_stack};",
+            "  --taplist-title-font: #{taplist_title_stack};",
+            "  --taplist-body-font: #{taplist_body_stack};"
+          ]
+      end)
 
     root_block = ":root {\n#{Enum.join(vars, "\n")}\n}\n"
 
