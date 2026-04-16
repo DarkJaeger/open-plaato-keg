@@ -28,8 +28,13 @@ defmodule OpenPlaatoKeg.HttpRouter do
   plug(:dispatch)
 
   get "/" do
+    target =
+      if OpenPlaatoKeg.AppConfig.get(:home_page, "taplist") == "kegs",
+        do: "/index.html",
+        else: "/taplist.html"
+
     conn
-    |> put_resp_header("location", "/index.html")
+    |> put_resp_header("location", target)
     |> send_resp(302, "")
   end
 
@@ -39,6 +44,18 @@ defmodule OpenPlaatoKeg.HttpRouter do
 
   get "api/config" do
     json_response(conn, 200, OpenPlaatoKeg.AppConfig.all())
+  end
+
+  get "api/config/home-page" do
+    page = OpenPlaatoKeg.AppConfig.get(:home_page, "taplist")
+    json_response(conn, 200, %{home_page: page})
+  end
+
+  post "api/config/home-page" do
+    params = conn.body_params || %{}
+    page = if params["home_page"] == "kegs", do: "kegs", else: "taplist"
+    OpenPlaatoKeg.AppConfig.put(:home_page, page)
+    json_response(conn, 200, %{status: "ok", home_page: page})
   end
 
   post "api/config/airlock-enabled" do
@@ -1098,6 +1115,82 @@ defmodule OpenPlaatoKeg.HttpRouter do
   end
 
   # ============================================
+  # Theme & Dashboard Setup
+  # ============================================
+
+  get "/theme.css" do
+    theme = OpenPlaatoKeg.AppConfig.get(:theme, %{})
+    css = build_theme_css(theme)
+
+    conn
+    |> put_resp_content_type("text/css")
+    |> put_resp_header("cache-control", "no-store")
+    |> send_resp(200, css)
+  end
+
+  get "api/config/theme" do
+    json_response(conn, 200, OpenPlaatoKeg.AppConfig.get(:theme, %{}))
+  end
+
+  post "api/config/theme" do
+    p = conn.body_params || %{}
+
+    theme =
+      Map.take(p, [
+        "accent_color",
+        "bg_color",
+        "card_bg",
+        "text_color",
+        "font_family",
+        "bg_image",
+        "bg_opacity"
+      ])
+
+    OpenPlaatoKeg.AppConfig.put(:theme, theme)
+    json_response(conn, 200, %{status: "ok", theme: theme})
+  end
+
+  get "uploads/background" do
+    path = Path.join(OpenPlaatoKeg.tap_handle_dir(), "background")
+
+    if File.exists?(path) do
+      content = File.read!(path)
+      content_type = detect_bg_image_type(content)
+
+      conn
+      |> put_resp_content_type(content_type)
+      |> send_resp(200, content)
+    else
+      json_response(conn, 404, %{error: "no_background_image"})
+    end
+  end
+
+  post "api/uploads/background" do
+    case conn.params["image"] do
+      %Plug.Upload{path: temp_path, content_type: ct} ->
+        allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]
+
+        if ct in allowed do
+          content = File.read!(temp_path)
+          dest = Path.join(OpenPlaatoKeg.tap_handle_dir(), "background")
+          File.write!(dest, content)
+          json_response(conn, 200, %{status: "ok", url: "/uploads/background"})
+        else
+          json_response(conn, 400, %{error: "unsupported image type, use jpg/png/webp/gif"})
+        end
+
+      _ ->
+        json_response(conn, 400, %{error: "No image file provided (field name must be 'image')"})
+    end
+  end
+
+  delete "api/uploads/background" do
+    path = Path.join(OpenPlaatoKeg.tap_handle_dir(), "background")
+    File.rm(path)
+    json_response(conn, 200, %{status: "ok"})
+  end
+
+  # ============================================
   # Other Endpoints
   # ============================================
 
@@ -1408,4 +1501,123 @@ defmodule OpenPlaatoKeg.HttpRouter do
   end
 
   defp find_jpeg_sof(_), do: nil
+
+  defp build_theme_css(theme) when is_map(theme) do
+    accent = Map.get(theme, "accent_color", "")
+    bg = Map.get(theme, "bg_color", "")
+    card_bg = Map.get(theme, "card_bg", "")
+    text = Map.get(theme, "text_color", "")
+    font = Map.get(theme, "font_family", "")
+    bg_image = Map.get(theme, "bg_image") in [true, "true"]
+
+    bg_opacity =
+      case Integer.parse(to_string(Map.get(theme, "bg_opacity", "15"))) do
+        {n, _} -> Float.round(n / 100.0, 2)
+        :error -> 0.15
+      end
+
+    font_import =
+      case font do
+        f when f in ["", "Outfit", nil] ->
+          ""
+
+        "System" ->
+          ""
+
+        f ->
+          encoded = String.replace(f, " ", "+")
+          "@import url('https://fonts.googleapis.com/css2?family=#{encoded}:wght@300;400;500;600;700&display=swap');\n"
+      end
+
+    font_stack =
+      case font do
+        f when f in ["", "Outfit", nil] ->
+          "'Outfit', -apple-system, BlinkMacSystemFont, sans-serif"
+
+        "System" ->
+          "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+
+        f ->
+          "'#{f}', -apple-system, BlinkMacSystemFont, sans-serif"
+      end
+
+    vars =
+      []
+      |> then(fn v ->
+        if accent != "" do
+          v ++
+            [
+              "  --amber-400: #{accent};",
+              "  --amber-500: #{accent};",
+              "  --amber-600: #{accent};",
+              "  --amber-700: #{accent};",
+              "  --amber-800: #{accent};",
+              "  --gold: #{accent};",
+              "  --gold-light: #{accent};"
+            ]
+        else
+          v
+        end
+      end)
+      |> then(fn v ->
+        if bg != "" do
+          v ++ ["  --slate-950: #{bg};", "  --bg: #{bg};"]
+        else
+          v
+        end
+      end)
+      |> then(fn v ->
+        if card_bg != "" do
+          v ++
+            [
+              "  --slate-900: #{card_bg};",
+              "  --slate-800: #{card_bg};",
+              "  --surface: #{card_bg};",
+              "  --surface-2: #{card_bg};"
+            ]
+        else
+          v
+        end
+      end)
+      |> then(fn v ->
+        if text != "" do
+          v ++
+            [
+              "  --foam: #{text};",
+              "  --foam-muted: #{text}80;",
+              "  --text: #{text};",
+              "  --text-muted: #{text}80;"
+            ]
+        else
+          v
+        end
+      end)
+      |> then(fn v -> v ++ ["  --font-sans: #{font_stack};"] end)
+
+    root_block = ":root {\n#{Enum.join(vars, "\n")}\n}\n"
+
+    html_block =
+      cond do
+        bg_image ->
+          overlay = "rgba(0,0,0,#{bg_opacity})"
+
+          "html {\n  background: linear-gradient(#{overlay}, #{overlay}), url('/uploads/background') !important;\n  background-size: cover !important;\n  background-attachment: fixed !important;\n  background-position: center !important;\n}\n"
+
+        bg != "" ->
+          "html {\n  background: #{bg} !important;\n}\n"
+
+        true ->
+          ""
+      end
+
+    "#{font_import}#{root_block}#{html_block}"
+  end
+
+  defp build_theme_css(_), do: ""
+
+  defp detect_bg_image_type(<<0xFF, 0xD8, _::binary>>), do: "image/jpeg"
+  defp detect_bg_image_type(<<0x89, 0x50, 0x4E, 0x47, _::binary>>), do: "image/png"
+  defp detect_bg_image_type(<<"RIFF", _::32, "WEBP", _::binary>>), do: "image/webp"
+  defp detect_bg_image_type(<<"GIF8", _::binary>>), do: "image/gif"
+  defp detect_bg_image_type(_), do: "application/octet-stream"
 end

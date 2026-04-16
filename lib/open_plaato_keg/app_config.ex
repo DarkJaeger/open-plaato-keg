@@ -6,7 +6,9 @@ defmodule OpenPlaatoKeg.AppConfig do
     brewfather_user_id: "",
     brewfather_api_key: "",
     watchtower_url: "",
-    watchtower_token: ""
+    watchtower_token: "",
+    theme: %{},
+    home_page: "taplist"
   }
 
   @doc "Load persisted config from disk into Application env. Call once at startup."
@@ -21,7 +23,9 @@ defmodule OpenPlaatoKeg.AppConfig do
               brewfather_user_id: Map.get(map, "brewfather_user_id", @defaults.brewfather_user_id),
               brewfather_api_key: Map.get(map, "brewfather_api_key", @defaults.brewfather_api_key),
               watchtower_url: Map.get(map, "watchtower_url", @defaults.watchtower_url),
-              watchtower_token: Map.get(map, "watchtower_token", @defaults.watchtower_token)
+              watchtower_token: Map.get(map, "watchtower_token", @defaults.watchtower_token),
+              theme: Map.get(map, "theme", @defaults.theme),
+              home_page: Map.get(map, "home_page", @defaults.home_page)
             }
             Application.put_env(:open_plaato_keg, :app_config, Map.merge(@defaults, loaded))
 

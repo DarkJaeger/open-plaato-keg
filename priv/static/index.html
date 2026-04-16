@@ -7,6 +7,7 @@
     <style>
       @import url("style.css");
     </style>
+    <link rel="stylesheet" href="/theme.css">
 </head>
 <body>
   <div id="header_container">
@@ -28,8 +29,8 @@
 
       <div id="navbarMenu" class="navbar-menu">
         <div class="navbar-start">
-          <a class="navbar-item" href="/index.html">Home</a>
-          <a class="navbar-item" href="/taplist.html">Tap List</a>
+          <a class="navbar-item" href="/">Home</a>
+          <a class="navbar-item" href="/index.html">Kegs</a>
           <a class="navbar-item" href="/history.html">History</a>
           <div class="navbar-item has-dropdown" id="configureDropdown">
             <a class="navbar-link" onclick="toggleDropdown(event)">Configure</a>
@@ -37,6 +38,7 @@
               <a class="navbar-item" href="/taplist-setup.html">Tap Setup</a>
               <a class="navbar-item" href="/tap-handles.html">Tap Handles</a>
               <a class="navbar-item" href="/setup.html">Scale Setup</a>
+              <a class="navbar-item" href="/dashboard-setup.html">Dashboard Setup</a>
               <a class="navbar-item" href="/server-update.html">Server Update</a>
               <a class="navbar-item" href="/airlock-setup.html">Airlock Setup</a>
               <a class="navbar-item" href="/transfer-scales.html">Transfer Scales</a>
@@ -297,7 +299,7 @@
                     </div>
                 `;
             }
-            const primarySection = isPercentPrimary
+            const primarySection = (isPercentPrimary && !isCO2)
                 ? `
                     <div class="keg-remaining is-primary${isCO2 ? ' is-co2-gauge' : ''}">
                         ${isCO2 ? `
