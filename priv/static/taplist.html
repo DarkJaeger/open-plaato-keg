@@ -23,10 +23,24 @@
     }
 
     html, body {
-      height: 100%;
-      background: var(--bg);
+      min-height: 100%;
       color: var(--text);
       font-family: var(--font-sans);
+    }
+
+    html {
+      background: var(--bg);
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+    }
+
+    body {
+      background: transparent;
+    }
+
+    main {
+      min-height: calc(100vh - 88px);
     }
 
     /* ─── HEADER ───────────────────────────────────── */

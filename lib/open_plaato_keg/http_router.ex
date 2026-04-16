@@ -1142,6 +1142,8 @@ defmodule OpenPlaatoKeg.HttpRouter do
         "card_bg",
         "text_color",
         "font_family",
+        "taplist_title_font",
+        "taplist_body_font",
         "bg_image",
         "bg_opacity"
       ])
@@ -1522,11 +1524,10 @@ defmodule OpenPlaatoKeg.HttpRouter do
       [font, taplist_title_font, taplist_body_font]
       |> Enum.reject(&(&1 in ["", "Outfit", nil, "System"]))
       |> Enum.uniq()
-      |> Enum.map(fn f ->
+      |> Enum.map_join(fn f ->
         encoded = String.replace(f, " ", "+")
         "@import url('https://fonts.googleapis.com/css2?family=#{encoded}:wght@300;400;500;600;700&display=swap');\n"
       end)
-      |> Enum.join()
 
     font_stack =
       case font do
