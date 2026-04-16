@@ -150,10 +150,22 @@ defmodule OpenPlaatoKeg.KegCommander do
     "76",
     # temperature_unit
     "80",
+    # wifi_signal_strength
+    "81",
+    # leak_detection
+    "83",
+    # min_temperature
+    "86",
+    # max_temperature
+    "87",
     # keg_mode_c02_beer
     "88",
     # sensitivity
-    "89"
+    "89",
+    # chip_temperature_string
+    "92",
+    # firmware_version
+    "93"
   ]
 
   @doc """

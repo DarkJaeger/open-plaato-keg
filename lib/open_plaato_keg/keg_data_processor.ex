@@ -50,8 +50,13 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     # Strip the id before routing — it is already in state.
     payload = Keyword.delete(data, :id)
 
+    # Internal metadata can arrive before we have enough signals to classify
+    # the connection as a keg. Hold onto that packet and publish it once the
+    # device is confirmed, so setup-page system fields don't disappear.
+    state = cache_pending_internal(payload, state)
+
     cond do
-      payload == [] ->
+      payload == [] or only_pending_internal?(payload, state) ->
         {:noreply, state}
 
       state[:device_type] == :airlock ->
@@ -120,6 +125,16 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
   defp process_keg(data, state) do
     id = state[:id]
     confirmed_keg? = state[:device_type] == :keg
+    pending_internal = state[:pending_internal]
+
+    data =
+      cond do
+        confirmed_keg? and pending_internal != nil and Keyword.get(data, :internal) == nil ->
+          Keyword.put(data, :internal, pending_internal)
+
+        true ->
+          data
+      end
 
     # Only register the device in KegData (via the :id key) once we have
     # confirmed it is a keg, so airlock devices never appear in the keg list.
@@ -162,8 +177,28 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
       DataLog.log(:keg, id, log_data)
     end
 
+    state =
+      if confirmed_keg?,
+        do: Map.delete(state, :pending_internal),
+        else: state
+
     {:noreply, state}
   end
+
+  defp cache_pending_internal(payload, %{device_type: nil} = state) do
+    case Keyword.get(payload, :internal) do
+      %{} = internal -> Map.put(state, :pending_internal, internal)
+      _ -> state
+    end
+  end
+
+  defp cache_pending_internal(_payload, state), do: state
+
+  defp only_pending_internal?(payload, %{device_type: nil}) do
+    payload != [] and Keyword.keys(payload) == [:internal]
+  end
+
+  defp only_pending_internal?(_payload, _state), do: false
 
   defp process_airlock(data, state) do
     id = state[:id]
