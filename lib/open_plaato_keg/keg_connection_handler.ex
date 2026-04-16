@@ -3,7 +3,6 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
   require Logger
 
   alias OpenPlaatoKeg.BlynkProtocol
-  alias OpenPlaatoKeg.KegCommander
   alias OpenPlaatoKeg.PlaatoData
   alias OpenPlaatoKeg.PlaatoProtocol
 
@@ -69,7 +68,6 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
 
         case Registry.register(OpenPlaatoKeg.KegSocketRegistry, keg_id, socket) do
           {:ok, _} ->
-            KegCommander.sync_all(keg_id)
             %{state | keg_id: keg_id}
 
           {:error, {:already_registered, old_pid}} ->
@@ -84,7 +82,6 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
 
             case Registry.register(OpenPlaatoKeg.KegSocketRegistry, keg_id, socket) do
               {:ok, _} ->
-                KegCommander.sync_all(keg_id)
                 %{state | keg_id: keg_id}
 
               {:error, reason} ->
