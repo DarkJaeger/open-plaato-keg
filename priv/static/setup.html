@@ -263,6 +263,16 @@
               </div>
             </div>
 
+            <div class="field">
+              <label class="label">Forget Saved Scale</label>
+              <p class="help">Removes the selected scale's saved record, including the stored 32-digit auth token ID and local settings. The scale can reconnect and create a fresh record later.</p>
+              <div class="control">
+                <button class="button is-danger is-light" type="button" onclick="forgetSelectedScale()">
+                  Forget Scale
+                </button>
+              </div>
+            </div>
+
             <p class="help" style="margin-bottom: 1rem;">
               Beverage recipe details now live in the <a href="/beverages.html">Beverage Library</a>. Date kegged and expiration date are managed from <a href="/taplist-setup.html">Tap Setup</a>.
             </p>
@@ -827,6 +837,48 @@
       function sendKegLabel() {
         const value = document.getElementById("kegLabel").value;
         sendCommand("label", { value });
+      }
+
+      function forgetSelectedScale() {
+        const kegId = document.getElementById("kegId")?.value;
+        if (!kegId) {
+          showToast("Please select a scale first", "warning");
+          return;
+        }
+
+        if (!confirm(`Forget this saved scale record?\n\n${kegId}\n\nThis removes the stored scale ID and local settings from the server.`)) {
+          return;
+        }
+
+        fetch(`/api/kegs/${encodeURIComponent(kegId)}/delete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.status === "ok") {
+              showToast("Scale record removed", "success");
+              currentKegData = {};
+              document.getElementById("kegId").value = "";
+              document.getElementById("kegLabel").value = "";
+              document.getElementById("emptyKegWeight").value = "";
+              document.getElementById("knownWeight").value = "";
+              document.getElementById("tempOffset").value = "";
+              document.getElementById("maxVolume").value = "";
+              document.getElementById("co2CapacityInput").value = "";
+              document.getElementById("currentSettings").innerHTML =
+                '<p class="has-text-grey">Select a keg to view current settings</p>';
+              clearActiveButtons();
+              updateUnitLabels("1");
+              loadConnectedKegs();
+            } else {
+              showToast(`Error: ${data.error || "Failed to forget scale"}`, "danger");
+            }
+          })
+          .catch((err) => {
+            showToast(`Error: ${err.message}`, "danger");
+          });
       }
 
       function setDisplayMode(value) {
