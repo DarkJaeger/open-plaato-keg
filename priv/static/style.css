@@ -1013,6 +1013,31 @@ body {
   background: var(--amber-600);
 }
 
+/* Forget button — appears on card hover */
+.keg-forget-btn {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--foam-muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  z-index: 2;
+}
+.keg-card:hover .keg-forget-btn { opacity: 1; }
+.keg-forget-btn:hover { background: rgba(239,68,68,0.15); color: #ef4444; }
+
 /* CO2 keg card variant */
 .keg-card.is-co2::before {
   background: linear-gradient(90deg, #22c55e, #16a34a);

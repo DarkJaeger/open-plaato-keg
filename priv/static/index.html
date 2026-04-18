@@ -322,6 +322,7 @@
                 : volumeSection;
             const card = `
                 <div class="card keg-card${isCO2 ? ' is-co2' : ''}" data-keg-id="${kegData.id}">
+                    <button class="keg-forget-btn" title="Forget this scale" onclick="forgetKeg('${kegData.id}')">×</button>
                     <div class="keg-header">
                         <div class="keg-identity">
                             <div class="keg-label-name">${displayLabel}${isCO2 ? '<span class="co2-badge">CO\u2082</span>' : ''}</div>
@@ -339,6 +340,16 @@
             column.innerHTML = card;
             attachDragHandlers(column);
             return column;
+        }
+
+        function forgetKeg(kegId) {
+            if (!confirm('Remove this scale from the dashboard?\n\nThis clears its stored data and disconnects the hardware. It will reappear if the device reconnects.')) return;
+            fetch(`/api/kegs/${encodeURIComponent(kegId)}/delete`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status !== 'ok') alert('Could not remove scale: ' + (d.error || 'unknown error'));
+                })
+                .catch(err => alert('Error: ' + err.message));
         }
 
         const airlockContainer = document.getElementById('airlockContainer');
