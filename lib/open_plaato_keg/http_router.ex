@@ -402,8 +402,10 @@ defmodule OpenPlaatoKeg.HttpRouter do
   # Delete a keg and all its stored data from DETS (e.g. decommissioned or phantom kegs).
   post "api/kegs/:id/delete" do
     keg_id = conn.params["id"]
+    KegCommander.disconnect(keg_id)
     KegData.delete(keg_id)
-    Logger.info("Deleted keg #{keg_id} from DETS")
+    WebSocketHandler.broadcast_keg_removed(keg_id)
+    Logger.info("Deleted keg #{keg_id} from DETS", [])
     json_response(conn, 200, %{status: "ok", deleted: keg_id})
   end
 

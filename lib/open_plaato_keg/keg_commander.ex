@@ -22,6 +22,22 @@ defmodule OpenPlaatoKeg.KegCommander do
   }
 
   @doc """
+  Forcibly closes the TCP socket for a connected keg, triggering a clean disconnect.
+  Safe to call even if the keg is not currently connected.
+  """
+  def disconnect(keg_id) do
+    case lookup_socket(keg_id) do
+      {:ok, socket} ->
+        Logger.info("Disconnecting keg #{keg_id} by request", [])
+        ThousandIsland.Socket.close(socket)
+        :ok
+
+      {:error, :not_connected} ->
+        :ok
+    end
+  end
+
+  @doc """
   Sends a command to a specific keg device.
   Returns :ok on success, {:error, reason} on failure.
   """

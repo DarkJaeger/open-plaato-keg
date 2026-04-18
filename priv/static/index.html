@@ -425,7 +425,13 @@
 
         socket.addEventListener('message', (event) => {
             const msg = JSON.parse(event.data);
-            if (msg.type === 'airlock') {
+            if (msg.type === 'keg_removed') {
+                const col = document.querySelector(`#kegContainer [data-keg-id="${cssEscapeAttrValue(msg.id)}"]`)?.closest('.column');
+                if (col) col.remove();
+                if (kegContainer.children.length === 0) {
+                    kegContainer.innerHTML = '<div class="column"><p class="has-text-grey">No kegs found. Connect a keg to see data here.</p></div>';
+                }
+            } else if (msg.type === 'airlock') {
                 const data = msg.data;
                 const airlockId = data.id;
                 const existingCard = document.querySelector(`#airlockContainer [data-airlock-id="${cssEscapeAttrValue(airlockId)}"]`);

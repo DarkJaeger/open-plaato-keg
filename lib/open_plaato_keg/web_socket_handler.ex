@@ -46,6 +46,20 @@ defmodule OpenPlaatoKeg.WebSocketHandler do
     )
   end
 
+  def broadcast_keg_removed(id) do
+    message = Poison.encode!(%{type: "keg_removed", id: id})
+
+    Registry.dispatch(
+      OpenPlaatoKeg.WebSocketConnectionRegistry,
+      "websocket_clients",
+      fn entries ->
+        for {pid, _} <- entries do
+          send(pid, {:broadcast, message})
+        end
+      end
+    )
+  end
+
   def publish_transfer_scale(id) do
     scale_data = TransferScaleData.get(id)
     message = Poison.encode!(%{type: "transfer_scale", data: scale_data})
