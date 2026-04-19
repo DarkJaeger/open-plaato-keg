@@ -43,6 +43,7 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
       cond do
         state[:device_type] != nil -> state
         airlock_data?(data) -> Map.put(state, :device_type, :airlock)
+        internal_keg_data?(data) -> Map.put(state, :device_type, :keg)
         keg_data?(data) -> Map.put(state, :device_type, :keg)
         true -> state
       end
@@ -89,6 +90,16 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
       Keyword.has_key?(data, :percent_of_beer_left) or
       Keyword.has_key?(data, :is_pouring) or
       Keyword.has_key?(data, :firmware_version)
+  end
+
+  defp internal_keg_data?(data) do
+    case Keyword.get(data, :internal) do
+      %{} = internal ->
+        Enum.any?(["dev", "fw", "tmpl", "build", "ver"], &Map.has_key?(internal, &1))
+
+      _ ->
+        false
+    end
   end
 
   # Valid pour range per unit. Lower bound catches near-zero scale noise;
