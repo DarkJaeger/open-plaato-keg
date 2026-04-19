@@ -186,15 +186,21 @@ defmodule OpenPlaatoKeg.HttpRouter do
   end
   post "api/kegs/:id/sync" do
     keg_id = conn.params["id"]
+    current = KegData.get(keg_id)
+
+    Logger.info("Setup page requested keg sync for #{keg_id}",
+      snapshot: inspect(sync_status_snapshot(current))
+    )
 
     case KegCommander.sync_all(keg_id) do
       :ok ->
         json_response(conn, 200, %{status: "ok", command: "sync"})
 
-       {:error, reason} ->
-         json_response(conn, 503, %{error: reason})
-     end
-   end
+      {:error, reason} ->
+        Logger.warning("Setup page sync failed for #{keg_id}: #{inspect(reason)}")
+        json_response(conn, 503, %{error: reason})
+    end
+  end
   post "api/kegs/:id/calibrate-known-weight" do
     keg_id = conn.params["id"]
     %{"value" => value} = conn.body_params
@@ -1377,6 +1383,25 @@ defmodule OpenPlaatoKeg.HttpRouter do
     conn
     |> put_resp_content_type("application/json")
     |> send_resp(status, Poison.encode!(data))
+  end
+
+  defp sync_status_snapshot(data) when is_map(data) do
+    %{
+      unit: data[:unit],
+      measure_unit: data[:measure_unit],
+      keg_mode_c02_beer: data[:keg_mode_c02_beer],
+      sensitivity: data[:sensitivity],
+      firmware_version: data[:firmware_version],
+      wifi_signal_strength: data[:wifi_signal_strength],
+      leak_detection: data[:leak_detection],
+      min_temperature: data[:min_temperature],
+      max_temperature: data[:max_temperature],
+      temperature_unit: data[:temperature_unit],
+      chip_temperature_string: data[:chip_temperature_string],
+      internal: Map.take(data[:internal] || %{}, ["dev", "ver", "fw", "build", "tmpl", "h-beat", "buff-in"])
+    }
+    |> Enum.reject(fn {_key, value} -> is_nil(value) or value == %{} end)
+    |> Map.new()
   end
 
   # Airlock: accept number or string that parses as a complete number (no trailing junk); return string for storage/metrics

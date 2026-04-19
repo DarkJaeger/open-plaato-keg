@@ -130,6 +130,10 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     data =
       cond do
         confirmed_keg? and pending_internal != nil and Keyword.get(data, :internal) == nil ->
+          Logger.info("Applying cached internal metadata for keg #{id}",
+            internal: inspect(internal_summary(pending_internal))
+          )
+
           Keyword.put(data, :internal, pending_internal)
 
         true ->
@@ -150,6 +154,8 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     amount_left_changed? =
       Enum.any?(data, fn {key, _value} -> key == :amount_left end)
 
+    maybe_log_setup_status_update(id, data, confirmed_keg?)
+
     # All publishers are guarded by confirmed_keg? to prevent phantom keg entries
     # when an airlock's internal packet arrives before its V99/V100/V101 pins
     # (which is what sets device_type to :airlock).
@@ -164,6 +170,8 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     ])
 
     if confirmed_keg? and id != nil do
+      maybe_log_persisted_setup_status(id, data_with_id)
+
       log_data =
         %{
           "amount_left" => Keyword.get(data, :amount_left),
@@ -187,7 +195,13 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
 
   defp cache_pending_internal(payload, %{device_type: nil} = state) do
     case Keyword.get(payload, :internal) do
-      %{} = internal -> Map.put(state, :pending_internal, internal)
+      %{} = internal ->
+        Logger.info("Caching internal metadata until device type is confirmed",
+          internal: inspect(internal_summary(internal))
+        )
+
+        Map.put(state, :pending_internal, internal)
+
       _ -> state
     end
   end
@@ -350,5 +364,86 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
         publish_func.(id, data)
       end
     end)
+  end
+
+  defp maybe_log_setup_status_update(nil, _data, _confirmed_keg?), do: :ok
+  defp maybe_log_setup_status_update(_id, _data, false), do: :ok
+
+  defp maybe_log_setup_status_update(id, data, true) do
+    summary = setup_status_summary(data)
+
+    if map_size(summary) > 0 do
+      Logger.info("Received setup status update from keg #{id}",
+        update: inspect(summary)
+      )
+    end
+  end
+
+  defp maybe_log_persisted_setup_status(nil, _data), do: :ok
+
+  defp maybe_log_persisted_setup_status(id, data) do
+    summary = setup_status_summary(data)
+
+    if map_size(summary) > 0 do
+      persisted =
+        id
+        |> KegData.get()
+        |> Map.take([
+          :unit,
+          :measure_unit,
+          :keg_mode_c02_beer,
+          :sensitivity,
+          :firmware_version,
+          :wifi_signal_strength,
+          :leak_detection,
+          :min_temperature,
+          :max_temperature,
+          :temperature_unit,
+          :chip_temperature_string,
+          :internal
+        ])
+        |> normalize_internal_summary()
+
+      Logger.info("Persisted setup status snapshot for keg #{id}",
+        snapshot: inspect(persisted)
+      )
+    end
+  end
+
+  defp setup_status_summary(data) when is_list(data) do
+    data
+    |> Enum.reduce(%{}, fn
+      {:internal, internal}, acc when is_map(internal) ->
+        Map.put(acc, :internal, internal_summary(internal))
+
+      {key, value}, acc
+      when key in [
+             :unit,
+             :measure_unit,
+             :keg_mode_c02_beer,
+             :sensitivity,
+             :firmware_version,
+             :wifi_signal_strength,
+             :leak_detection,
+             :min_temperature,
+             :max_temperature,
+             :temperature_unit,
+             :chip_temperature_string
+           ] ->
+        Map.put(acc, key, value)
+
+      _, acc ->
+        acc
+    end)
+  end
+
+  defp normalize_internal_summary(%{internal: internal} = data) when is_map(internal) do
+    Map.put(data, :internal, internal_summary(internal))
+  end
+
+  defp normalize_internal_summary(data), do: data
+
+  defp internal_summary(internal) when is_map(internal) do
+    Map.take(internal, ["dev", "ver", "fw", "build", "tmpl", "h-beat", "buff-in"])
   end
 end
