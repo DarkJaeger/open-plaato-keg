@@ -21,9 +21,15 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
   end
 
   def handle_cast({:keg_data, data}, state) do
-    data
-    |> decode()
-    |> process(state)
+    decoded = decode(data)
+    maybe_log_raw_connect_messages(decoded, state)
+
+    state =
+      Map.update(state, :debug_packet_count, 1, fn count ->
+        min(count + 1, 6)
+      end)
+
+    process(decoded, state)
   end
 
   defp process([], state), do: {:noreply, state}
@@ -351,6 +357,30 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     |> BlynkProtocol.decode()
     |> PlaatoProtocol.decode()
     |> PlaatoData.decode()
+  end
+
+  defp maybe_log_raw_connect_messages(decoded, state) when is_list(decoded) do
+    packet_count = Map.get(state, :debug_packet_count, 0)
+
+    if packet_count < 6 do
+      Logger.info("Raw decoded packet #{packet_count + 1}: #{inspect(decoded, limit: :infinity)}")
+    end
+
+    Enum.each(decoded, fn
+      {:internal, internal} when is_map(internal) ->
+        Logger.info("Raw internal packet observed: #{inspect(internal, limit: :infinity)}")
+
+      {:keg_mode_c02_beer, value} ->
+        Logger.info("Raw keg mode packet observed: #{inspect(value)}")
+
+      {:sensitivity, value} ->
+        Logger.info("Raw sensitivity packet observed: #{inspect(value)}")
+
+      _ ->
+        :ok
+    end)
+
+    decoded
   end
 
   defp publish(nil = _id, data, _publishers) do
