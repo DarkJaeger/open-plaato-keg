@@ -43,6 +43,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set image name
+        id: image
+        run: echo "name=$(echo 'ghcr.io/${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - uses: paulhatch/semantic-version@v5.3.0
         id: version
 
@@ -72,14 +76,8 @@ jobs:
 
       - name: Build and push Docker images
         run: |
-          if [ "${{ github.ref_name }}" = "master" ]; then
-            DOCKER_TAG="latest"
-          else
-            DOCKER_TAG="${{ github.ref_name }}"
-          fi
-          REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 \
-            -t ghcr.io/${REPO}:${{ steps.version.outputs.version }} \
-            -t ghcr.io/${REPO}:${DOCKER_TAG} \
+            -t ${{ steps.image.outputs.name }}:${{ steps.version.outputs.version }} \
+            -t ${{ steps.image.outputs.name }}:latest \
             --push .
