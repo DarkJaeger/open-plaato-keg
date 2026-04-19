@@ -130,8 +130,8 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     data =
       cond do
         confirmed_keg? and pending_internal != nil and Keyword.get(data, :internal) == nil ->
-          Logger.info("Applying cached internal metadata for keg #{id}",
-            internal: inspect(internal_summary(pending_internal))
+          Logger.info(
+            "Applying cached internal metadata for keg #{id}: #{inspect(internal_summary(pending_internal))}"
           )
 
           Keyword.put(data, :internal, pending_internal)
@@ -196,8 +196,8 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
   defp cache_pending_internal(payload, %{device_type: nil} = state) do
     case Keyword.get(payload, :internal) do
       %{} = internal ->
-        Logger.info("Caching internal metadata until device type is confirmed",
-          internal: inspect(internal_summary(internal))
+        Logger.info(
+          "Caching internal metadata until device type is confirmed: #{inspect(internal_summary(internal))}"
         )
 
         Map.put(state, :pending_internal, internal)
@@ -373,9 +373,7 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
     summary = setup_status_summary(data)
 
     if map_size(summary) > 0 do
-      Logger.info("Received setup status update from keg #{id}",
-        update: inspect(summary)
-      )
+      Logger.info("Received setup status update from keg #{id}: #{inspect(summary)}")
     end
   end
 
@@ -404,9 +402,7 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
         ])
         |> normalize_internal_summary()
 
-      Logger.info("Persisted setup status snapshot for keg #{id}",
-        snapshot: inspect(persisted)
-      )
+      Logger.info("Persisted setup status snapshot for keg #{id}: #{inspect(persisted)}")
     end
   end
 

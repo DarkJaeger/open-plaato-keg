@@ -188,8 +188,8 @@ defmodule OpenPlaatoKeg.HttpRouter do
     keg_id = conn.params["id"]
     current = KegData.get(keg_id)
 
-    Logger.info("Setup page requested keg sync for #{keg_id}",
-      snapshot: inspect(sync_status_snapshot(current))
+    Logger.info(
+      "Setup page requested keg sync for #{keg_id}: #{inspect(sync_status_snapshot(current))}"
     )
 
     case KegCommander.sync_all(keg_id) do
