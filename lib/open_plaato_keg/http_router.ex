@@ -184,7 +184,17 @@ defmodule OpenPlaatoKeg.HttpRouter do
       end
     end
   end
+  post "api/kegs/:id/sync" do
+    keg_id = conn.params["id"]
 
+    case KegCommander.sync_all(keg_id) do
+      :ok ->
+        json_response(conn, 200, %{status: "ok", command: "sync"})
+
+       {:error, reason} ->
+         json_response(conn, 503, %{error: reason})
+     end
+   end
   post "api/kegs/:id/calibrate-known-weight" do
     keg_id = conn.params["id"]
     %{"value" => value} = conn.body_params

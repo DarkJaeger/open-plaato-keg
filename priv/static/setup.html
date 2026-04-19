@@ -367,6 +367,7 @@
       const kegIdSelect = document.getElementById("kegId");
       const connectionStatus = document.getElementById("connectionStatus");
       let currentKegData = {};
+      let syncRequestInFlight = null;
 
       function getFallbackScaleName(index) {
         return `Scale ${index + 1}`;
@@ -434,9 +435,28 @@
             populateFormFields(data);
             updateSettingsDisplay(data);
             highlightCurrentSettings(data);
+            requestKegSync(kegId);
           })
           .catch((err) => {
             console.error("Error loading keg data:", err);
+          });
+      }
+
+      function requestKegSync(kegId) {
+        if (!kegId || syncRequestInFlight === kegId) return;
+
+        syncRequestInFlight = kegId;
+
+        fetch(`/api/kegs/${kegId}/sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
+        })
+          .catch((err) => {
+            console.error("Error syncing keg data:", err);
+          })
+          .finally(() => {
+            if (syncRequestInFlight === kegId) syncRequestInFlight = null;
           });
       }
 
