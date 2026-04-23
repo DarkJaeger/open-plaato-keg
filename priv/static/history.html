@@ -124,6 +124,7 @@
     let selectedDevice = null;
     let selectedRange = '24h';
     let chart = null;
+    let timeFormat = '12h';
 
     // ----------------------------------------------------------------
     // Navbar helpers
@@ -152,6 +153,11 @@
         const el = document.getElementById('serverVersion');
         if (el && d.version) el.textContent = 'v' + d.version;
       })
+      .catch(() => {});
+
+    fetch('/api/config/time-format')
+      .then(r => r.json())
+      .then(d => { timeFormat = d.time_format || '12h'; })
       .catch(() => {});
 
     // ----------------------------------------------------------------
@@ -426,14 +432,14 @@
             legend: { position: 'top' },
             tooltip: {
               callbacks: {
-                title: items => new Date(items[0].parsed.x).toLocaleString(),
+                title: items => new Date(items[0].parsed.x).toLocaleString([], { hour12: timeFormat !== '24h' }),
               },
             },
           },
           scales: {
             x: {
               type: 'time',
-              time: { tooltipFormat: 'PPpp' },
+              time: { tooltipFormat: timeFormat === '24h' ? 'PP HH:mm:ss' : 'PPpp' },
               title: { display: false },
               ticks: { maxTicksLimit: 10 },
             },

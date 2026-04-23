@@ -376,10 +376,15 @@
     });
 
     // ── Clock ──────────────────────────────────────
+    let clockHour12 = true;
     function updateClock() {
       document.getElementById('live-clock').textContent =
-        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: clockHour12 });
     }
+    fetch('/api/config/time-format')
+      .then(r => r.json())
+      .then(d => { clockHour12 = (d.time_format || '12h') !== '24h'; updateClock(); })
+      .catch(() => {});
     updateClock();
     setInterval(updateClock, 10000);
 

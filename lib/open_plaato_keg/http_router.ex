@@ -58,6 +58,18 @@ defmodule OpenPlaatoKeg.HttpRouter do
     json_response(conn, 200, %{status: "ok", home_page: page})
   end
 
+  get "api/config/time-format" do
+    format = OpenPlaatoKeg.AppConfig.get(:time_format, "12h")
+    json_response(conn, 200, %{time_format: format})
+  end
+
+  post "api/config/time-format" do
+    params = conn.body_params || %{}
+    format = if params["time_format"] == "24h", do: "24h", else: "12h"
+    OpenPlaatoKeg.AppConfig.put(:time_format, format)
+    json_response(conn, 200, %{status: "ok", time_format: format})
+  end
+
   post "api/config/airlock-enabled" do
     params = conn.body_params || %{}
     enabled = params["enabled"] in [true, "true", "1"]
