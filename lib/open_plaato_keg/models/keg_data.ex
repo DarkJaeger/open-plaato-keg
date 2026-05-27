@@ -1,11 +1,21 @@
 defmodule OpenPlaatoKeg.Models.KegData do
   require Logger
 
+  alias OpenPlaatoKeg.Models.AirlockData
+
   def all do
     Enum.map(devices(), &get/1)
   end
 
   def get(id) do
+    if id in airlock_devices() do
+      %{}
+    else
+      get_keg(id)
+    end
+  end
+
+  defp get_keg(id) do
     query = {{id, :"$1"}, :"$2"}
 
     data =
@@ -32,10 +42,12 @@ defmodule OpenPlaatoKeg.Models.KegData do
 
   def devices do
     query = {{:_, :id}, :"$1"}
+    airlock_ids = MapSet.new(airlock_devices())
 
     :keg_data
     |> :dets.match(query)
     |> List.flatten()
+    |> Enum.reject(&MapSet.member?(airlock_ids, &1))
   end
 
   def publish(id, data) do
@@ -52,14 +64,20 @@ defmodule OpenPlaatoKeg.Models.KegData do
     |> Enum.each(fn key -> :dets.delete(:keg_data, {id, key}) end)
   end
 
+  defp airlock_devices do
+    AirlockData.devices()
+  catch
+    :exit, _ -> []
+  end
+
   # unit "1" = metric, "2" = US; measure_unit "1" = weight; keg_mode "2" = CO2
   # CO2 mode: always weight-based regardless of measure_unit setting
   defp derive_beer_left_unit("1", _, "2"), do: "kg CO\u2082"
   defp derive_beer_left_unit("2", _, "2"), do: "lbs CO\u2082"
   # Beer mode: unit + measure_unit
   defp derive_beer_left_unit("1", "1", _), do: "kg"
-  defp derive_beer_left_unit("1", _, _),   do: "litre"
+  defp derive_beer_left_unit("1", _, _), do: "litre"
   defp derive_beer_left_unit("2", "1", _), do: "lbs"
-  defp derive_beer_left_unit("2", _, _),   do: "gal"
-  defp derive_beer_left_unit(_, _, _),     do: "litre"
+  defp derive_beer_left_unit("2", _, _), do: "gal"
+  defp derive_beer_left_unit(_, _, _), do: "litre"
 end
