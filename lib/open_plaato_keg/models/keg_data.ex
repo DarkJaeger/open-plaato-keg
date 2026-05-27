@@ -15,6 +15,30 @@ defmodule OpenPlaatoKeg.Models.KegData do
     end
   end
 
+  def devices do
+    query = {{:_, :id}, :"$1"}
+    airlock_ids = MapSet.new(airlock_devices())
+
+    :keg_data
+    |> :dets.match(query)
+    |> List.flatten()
+    |> Enum.reject(&MapSet.member?(airlock_ids, &1))
+  end
+
+  def publish(id, data) do
+    Enum.each(data, fn {key, value} ->
+      :dets.insert(:keg_data, {{id, key}, value})
+    end)
+  end
+
+  def delete(id) do
+    # Find all keys stored for this id, then delete each record individually.
+    :keg_data
+    |> :dets.match({{id, :"$1"}, :_})
+    |> List.flatten()
+    |> Enum.each(fn key -> :dets.delete(:keg_data, {id, key}) end)
+  end
+
   defp get_keg(id) do
     query = {{id, :"$1"}, :"$2"}
 
@@ -38,30 +62,6 @@ defmodule OpenPlaatoKeg.Models.KegData do
     else
       data
     end
-  end
-
-  def devices do
-    query = {{:_, :id}, :"$1"}
-    airlock_ids = MapSet.new(airlock_devices())
-
-    :keg_data
-    |> :dets.match(query)
-    |> List.flatten()
-    |> Enum.reject(&MapSet.member?(airlock_ids, &1))
-  end
-
-  def publish(id, data) do
-    Enum.each(data, fn {key, value} ->
-      :dets.insert(:keg_data, {{id, key}, value})
-    end)
-  end
-
-  def delete(id) do
-    # Find all keys stored for this id, then delete each record individually.
-    :keg_data
-    |> :dets.match({{id, :"$1"}, :_})
-    |> List.flatten()
-    |> Enum.each(fn key -> :dets.delete(:keg_data, {id, key}) end)
   end
 
   defp airlock_devices do
