@@ -1028,7 +1028,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
           simplified = Enum.map(batches, fn b ->
             %{
               id:     b["_id"],
-              name:   b["name"] || get_in(b, ["recipe", "name"]) || "",
+              name:   "#{b["name"] || ""} ##{b["batchNo"] || ""} - #{get_in(b, ["recipe", "name"]) || ""}",
               style:  get_in(b, ["recipe", "style", "name"]) || "",
               abv:    b["measuredAbv"] || b["estimatedAbv"],
               status: b["status"] || ""

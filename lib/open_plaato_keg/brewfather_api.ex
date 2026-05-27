@@ -9,7 +9,7 @@ defmodule OpenPlaatoKeg.BrewfatherApi do
 
   def fetch_batches(user_id, api_key) do
     auth = Base.encode64("#{user_id}:#{api_key}")
-    url = "#{@base_url}/batches?include=recipe&limit=50"
+    url = "#{@base_url}/batches?include=measuredAbv,measuredOg,measuredFg,estimatedOg,estimatedFg,recipe.style.name,recipe.ibu,recipe.name,estimatedIbu,estimatedColor,batchNotes,tasteNotes&limit=50&order_by=batchNo&order_by_direction=desc"
 
     case Req.get(url, headers: [{"authorization", "Basic #{auth}"}]) do
       {:ok, %{status: 200, body: batches}} when is_list(batches) ->
@@ -32,7 +32,7 @@ defmodule OpenPlaatoKeg.BrewfatherApi do
     srm = batch["estimatedColor"] || get_in(batch, ["recipe", "color"])
 
     %{
-      name: batch["name"] || get_in(batch, ["recipe", "name"]) || "",
+      name: "#{batch["name"]} #{batch["batchNo"]} - #{get_in(batch, ["recipe", "name"]) || ""}",
       brewery: batch["brewer"] || "",
       style: get_in(batch, ["recipe", "style", "name"]) || "",
       abv: to_string(batch["measuredAbv"] || batch["estimatedAbv"] || ""),
