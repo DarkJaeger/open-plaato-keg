@@ -39,10 +39,17 @@ defmodule OpenPlaatoKeg.KegDataProcessor do
       end
 
     # Detect device type from pin keys once and cache it in state.
+    # `airlock_data?` is checked BEFORE the sticky `state[:device_type] != nil`
+    # clause because the Plaato Airlock v3 (NodeMCU, fw 0.5.1) sends an
+    # `internal` metadata packet (containing dev/build/ver) before its first
+    # V99/V100/V101 hardware pin write. That metadata matches
+    # `internal_keg_data?/1` and would otherwise lock the device as `:keg`
+    # before the actual airlock pins arrive (issue #10). The airlock virtual
+    # pins are device-specific and should always override.
     state =
       cond do
-        state[:device_type] != nil -> state
         airlock_data?(data) -> Map.put(state, :device_type, :airlock)
+        state[:device_type] != nil -> state
         internal_keg_data?(data) -> Map.put(state, :device_type, :keg)
         keg_data?(data) -> Map.put(state, :device_type, :keg)
         true -> state
