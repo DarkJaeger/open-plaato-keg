@@ -595,6 +595,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
       end
 
     if unit_pin do
+      OpenPlaatoKeg.SettingsRestore.remember(keg_id, :unit, unit_pin)
       current = KegData.get(keg_id)
       measure_unit = to_string(current[:measure_unit] || "2")
       keg_mode = to_string(current[:keg_mode_c02_beer] || "1")
@@ -633,6 +634,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
       end
 
     if measure_pin do
+      OpenPlaatoKeg.SettingsRestore.remember(keg_id, :measure_unit, measure_pin)
       current = KegData.get(keg_id)
       unit = to_string(current[:unit] || "1")
       keg_mode = to_string(current[:keg_mode_c02_beer] || "1")
@@ -663,6 +665,7 @@ defmodule OpenPlaatoKeg.HttpRouter do
       end
 
     if mode_pin do
+      OpenPlaatoKeg.SettingsRestore.remember(keg_id, :keg_mode, mode_pin)
       current = KegData.get(keg_id)
       unit = to_string(current[:unit] || "1")
       measure_unit = to_string(current[:measure_unit] || "2")
