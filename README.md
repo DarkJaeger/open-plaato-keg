@@ -163,6 +163,9 @@ If Docker isn't your preferred method, you can create an [Elixir Release](https:
 | HTTP_LISTENER_PORT            | Optional    | 8085                                                            | HTTP port for web UI and API |
 | DATABASE_FILE_PATH            | Optional    | priv/db/keg_data.bin                                            | Path to persistent database file |
 | INCLUDE_UNKNOWN_DATA          | Optional    | false                                                           | Include unknown/undecoded pins in output |
+| DEFAULT_UNIT                  | Optional    |                                                                 | Unit system restored to a keg when it reconnects and no unit was chosen for it: `1` metric, `2` US |
+| DEFAULT_MEASURE_UNIT          | Optional    |                                                                 | Measure mode restored on reconnect: `1` weight, `2` volume |
+| DEFAULT_KEG_MODE              | Optional    |                                                                 | Keg mode restored on reconnect: `1` beer, `2` CO2 |
 | MQTT_ENABLED                  | Optional    | false                                                            | Enable MQTT publishing |
 | MQTT_HOST                     | Optional    | localhost                                                       | MQTT broker hostname |
 | MQTT_PORT                     | Optional    | 1883                                                            | MQTT broker port |

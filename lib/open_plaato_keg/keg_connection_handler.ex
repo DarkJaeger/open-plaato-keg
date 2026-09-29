@@ -34,6 +34,11 @@ defmodule OpenPlaatoKeg.KegConnectionHandler do
     # Extract keg ID from the data and register socket
     state = maybe_register_socket(data, socket, state)
 
+    # Answer the keg's settings sync, so a reconnect keeps its unit and mode.
+    state.keg_id
+    |> OpenPlaatoKeg.SettingsRestore.replies(data)
+    |> Enum.each(&ThousandIsland.Socket.send(socket, &1))
+
     {:continue, state}
   end
 

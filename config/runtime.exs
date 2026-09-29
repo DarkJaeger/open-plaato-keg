@@ -7,6 +7,14 @@ config :open_plaato_keg,
 config :open_plaato_keg, :db,
   file_path: get_env("DATABASE_FILE_PATH", :string, "priv/db/keg_data.bin")
 
+# Settings answered to a keg's settings sync when the operator has not chosen one for it
+# (see OpenPlaatoKeg.SettingsRestore). Unit: 1 metric, 2 US. Measure: 1 weight, 2 volume.
+# Keg mode: 1 beer, 2 CO2. Unset: answer only what an operator chose.
+config :open_plaato_keg, :settings_defaults,
+  unit: get_env("DEFAULT_UNIT", :string, nil),
+  measure_unit: get_env("DEFAULT_MEASURE_UNIT", :string, nil),
+  keg_mode: get_env("DEFAULT_KEG_MODE", :string, nil)
+
 config :open_plaato_keg, :tcp_listener, port: get_env!("KEG_LISTENER_PORT", :integer, "1234")
 
 config :open_plaato_keg, :http_listener, port: get_env!("HTTP_LISTENER_PORT", :integer, "8085")
